@@ -337,9 +337,9 @@ Every `write_audit()` call uses these fields:
 
 | Field | Type | Nullable | Rule |
 |---|---|---|---|
-| `actor_id` | `uuid.UUID \| None` | Yes | NULL only for system actors |
+| `actor_id` | `uuid.UUID \| str` | **No** (in code today) | The current `write_audit()` signature in `src/shared/security/audit.py` marks `actor_id` as required. System actors (seed script, Celery housekeeping tasks) must pass a well-known sentinel UUID — reserve `00000000-0000-0000-0000-000000000000` (the "system" actor) and record it once in `src/shared/security/audit.py` as a module-level constant `SYSTEM_ACTOR_ID`. An earlier draft of this RFC proposed making `actor_id` nullable; the implementability check during Stage 3 surfaced the conflict with the shipped code and picked the sentinel-UUID path instead (zero code change, easier to audit). |
 | `institution_id` | `uuid.UUID` | No | Always required; never inferred from actor |
-| `action` | `AuditEvent` | No | Must be a named member of `AuditEvent` enum |
+| `action` | `AuditEvent` | No | Must be a named member of `AuditEvent` enum (currently 14 values; extend as Stage-4 modules need — see §2.3 below) |
 | `resource_type` | `str` | No | Singular noun: `"user"`, `"group"`, `"message"` |
 | `resource_id` | `uuid.UUID \| None` | Yes | NULL only when the resource doesn't exist yet at audit time (e.g. `institution.created` before the row is committed) |
 | `metadata` | `dict[str, Any]` | — | Small, structured, no PII unless required. Max ~20 keys |

@@ -27,8 +27,10 @@ tools are expected later. Two problems need solving before Stage-4 modules ship:
 2. **Inconsistent error envelope (Gap B).** The smoke run documented in
    `docs/MANUAL_SMOKE.md` found that `AppException`-derived errors produce the
    correct `{"error": {"code", "message", "details"}}` shape, but bare
-   `HTTPException(detail=...)` calls — four of them in
-   `src/modules/auth/routes/auth_routes.py`, plus FastAPI's own 401 for missing
+   `HTTPException(detail=...)` calls — seven of them in
+   `src/modules/auth/routes/auth_routes.py` (verified by the Stage-3
+   implementability check, not the original drafter's count of four), plus
+   FastAPI's own 401 for missing
    auth — produce `{"detail": "..."}`. The Flutter team is already parsing both
    shapes. This RFC fixes the shape once.
 
@@ -235,7 +237,7 @@ See `docs/design/websocket-scaling.md` for the full WebSocket event contract.
 **Decision: use a FastAPI exception handler (option A).**
 
 Rationale: mandating `AppException` everywhere (option B) relies on every
-current and future developer remembering the rule. It has already failed — four
+current and future developer remembering the rule. It has already failed — seven
 call sites in `auth_routes.py` use bare `HTTPException`, and FastAPI itself
 emits `{"detail": "Not authenticated"}` for missing auth tokens. A middleware
 fix is applied once, in one place (`src/main.py`), and normalises every
@@ -281,7 +283,7 @@ def _status_to_code(status_code: int) -> str:
         405: "METHOD_NOT_ALLOWED",
         409: "CONFLICT",
         422: "VALIDATION_ERROR",
-        429: "RATE_LIMITED",
+        429: "RATE_LIMIT_EXCEEDED",
         500: "INTERNAL_SERVER_ERROR",
         503: "SERVICE_UNAVAILABLE",
     }
@@ -326,7 +328,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 **Does this RFC cover the cleanup?** The middleware fix in `src/main.py` is in
 scope for Stage 3 and should be implemented before Stage-4 modules begin. The
-optional `AppException` refactor of the four auth route call sites is a
+optional `AppException` refactor of the seven auth route call sites is a
 **follow-up** (low priority — the middleware makes the responses correct either
 way). Track it as a tech-debt note in `docs/NEXT_SESSION.md`.
 
@@ -354,7 +356,7 @@ cross-cutting area and `REASON` is a concise, specific verb-phrase.
 | `AUTH_UNAUTHENTICATED` | 401 | this RFC | No/malformed auth token (middleware default) |
 | `TENANT_FORBIDDEN` | 403 | `tenant-isolation.md` | Cross-institution access attempt |
 | `IDEMPOTENCY_COLLISION` | 409 | `idempotency.md` | Duplicate `Idempotency-Key` with different payload |
-| `RATE_LIMITED` | 429 | this RFC | Per-endpoint/per-IP rate limit (shorter alias for `RATE_LIMIT_EXCEEDED`) |
+| (none — use `RATE_LIMIT_EXCEEDED` from the existing `AppException` catalog above) | 429 | — | Per-endpoint/per-IP rate limit. Do NOT introduce a second alias such as `RATE_LIMITED`; keep one code across the codebase. |
 
 **Module-level codes (to be added in Stage 4)** — illustrative, not exhaustive:
 
@@ -458,7 +460,7 @@ cannot have two code paths for error parsing. One shape, always.
 
 ### Future Work
 
-- **Tech debt:** Optionally refactor the four `HTTPException(detail=...)` call
+- **Tech debt:** Optionally refactor the seven `HTTPException(detail=...)` call
   sites in `auth_routes.py` to use `AppException` subclasses. Track in
   `docs/NEXT_SESSION.md`.
 - **Revisit if:** a third-party integration requires header-based versioning.

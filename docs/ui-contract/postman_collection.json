@@ -1,0 +1,139 @@
+{
+  "info": {
+    "name": "DuttaMessenger — Auth (Stage 0+1)",
+    "description": "Auth endpoints live as of commit 7197905. Import into Postman or Insomnia.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api/v1" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "institution_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Create Institution (bootstrap)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/institutions", "host": ["{{base_url}}"], "path": ["institutions"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Springfield Elementary\",\n  \"domain\": \"springfield.edu\",\n  \"max_users\": 5000,\n  \"max_groups\": 500\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j && j.data && j.data.id) pm.collectionVariables.set('institution_id', j.data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invite User (requires auth)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": { "raw": "{{base_url}}/auth/invite", "host": ["{{base_url}}"], "path": ["auth", "invite"] },
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"charlie@school.edu\"\n}" }
+      }
+    },
+    {
+      "name": "Register via invitation",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/auth/register", "host": ["{{base_url}}"], "path": ["auth", "register"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"charlie@school.edu\",\n  \"password\": \"strong-password-123\",\n  \"full_name\": \"Charlie Example\",\n  \"invitation_token\": \"paste-invitation-token-here\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"alice@school.edu\",\n  \"password\": \"your-password\",\n  \"institution_id\": \"{{institution_id}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j && j.data) {",
+              "  pm.collectionVariables.set('access_token', j.data.access_token);",
+              "  pm.collectionVariables.set('refresh_token', j.data.refresh_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Refresh token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] },
+        "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}" }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j && j.data) {",
+              "  pm.collectionVariables.set('access_token', j.data.access_token);",
+              "  pm.collectionVariables.set('refresh_token', j.data.refresh_token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Change password",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": { "raw": "{{base_url}}/auth/change-password", "host": ["{{base_url}}"], "path": ["auth", "change-password"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"current_password\": \"old-password\",\n  \"new_password\": \"a-stronger-new-password\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "http://localhost:8000/health", "host": ["http://localhost:8000"], "path": ["health"] }
+      }
+    }
+  ]
+}

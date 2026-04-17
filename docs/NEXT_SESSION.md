@@ -73,22 +73,57 @@ There is **no committed DB data file**. Three layers to know:
 
 1. **Schema definition (version-controlled):**
    - `migrations/001_init_schema.sql` — the hand-written canonical SQL with all 20 tables.
-   - `migrations/versions/0001_baseline_schema.py` — wraps that SQL in an Alembic revision with a tested `downgrade()`.
+   - `migrations/versions/0001_baseline_schema.py` — wraps that SQL in an Alembic revision with a **tested** `downgrade()`.
    - Future schema changes: `make migrate-new MSG="..."` creates a new Alembic revision; never another raw SQL file.
 
-2. **Running database (ephemeral, local):**
-   - Started by `docker compose up -d` — Postgres 16 in a container.
-   - Data lives in the Docker volume `postgres_data` (defined in `docker-compose.yml`).
-   - Destroyed when you run `docker compose down -v` (the `-v` flag wipes the volume).
-   - Connection URL: `postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger` (see `src/config.py` and `.env.example`).
+2. **Running database — two options on this machine:**
+
+   **Option A (what we actually used): Homebrew Postgres 17.**
+   - Already installed and running (`brew services list` shows `postgresql@17 started`).
+   - Two databases created: `dutta_messenger` (dev) and `dutta_messenger_test` (pytest).
+   - Owned by local user `guru`, no password.
+   - `.env` at repo root (gitignored) points at this — see below.
+
+   **Option B: Docker Compose.**
+   - `docker compose up -d` → Postgres 16 container. Needs Docker Desktop running.
+   - Data in volume `postgres_data`. Wiped by `docker compose down -v`.
+   - Connection URL in `.env.example` (`messenger` user).
 
 3. **Applying the schema to a running DB:**
    ```bash
-   docker compose up -d       # start Postgres
-   make migrate               # alembic upgrade head → runs 0001_baseline_schema
+   make migrate    # alembic upgrade head → runs 0001_baseline_schema
    ```
+   Verified end-to-end on commit `f76e210`: upgrade → 21 tables, downgrade → 1, upgrade → 21.
 
-**Production will use managed Postgres** (RDS / Cloud SQL) — same migration command, just a different `DATABASE_URL`.
+**Production will use managed Postgres** (RDS / Cloud SQL) — same command, different `DATABASE_URL`.
+
+### Exact local setup recipe (what worked on this machine)
+
+```bash
+# 1. DBs (one-time)
+psql -h localhost -U guru -d postgres -c "CREATE DATABASE dutta_messenger;"
+psql -h localhost -U guru -d postgres -c "CREATE DATABASE dutta_messenger_test;"
+
+# 2. venv with Python 3.13 (system Python 3.9 is too old for pyproject)
+/opt/homebrew/bin/python3.13 -m venv .venv
+.venv/bin/pip install -e ".[dev,test]"
+
+# 3. .env file at repo root with (at minimum):
+#   DATABASE_URL=postgresql+asyncpg://guru@localhost:5432/dutta_messenger
+#   TEST_DATABASE_URL=postgresql+asyncpg://guru@localhost:5432/dutta_messenger_test
+#   SECRET_KEY=dev-only-secret-do-not-use-in-production
+
+# 4. Apply schema
+.venv/bin/alembic upgrade head              # dev DB
+DATABASE_URL="postgresql+asyncpg://guru@localhost:5432/dutta_messenger_test" \
+  .venv/bin/alembic upgrade head            # test DB
+
+# 5. Smoke test harness
+.venv/bin/pytest tests/test_harness_smoke.py -v --no-cov
+
+# 6. Run the API
+.venv/bin/uvicorn src.main:app --reload
+```
 
 ---
 

@@ -1,54 +1,42 @@
 """DuttaMessenger FastAPI Application.
 
-Main application entry point with middleware setup,
-router registration, and lifecycle management.
+Main application entry point. Composes the app from the observability and
+security primitives in `src/shared/`, registers module routers behind feature
+flags, and owns the startup/shutdown lifecycle.
 """
 
-import structlog
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, status
+
+import structlog
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.requests import Request
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 
 from src.config import settings
-from src.shared.database import close_db, init_db
+from src.shared.database import close_db
 from src.shared.exceptions import AppException
+from src.shared.middleware.correlation_id import CorrelationIdMiddleware
 from src.shared.middleware.request_logger import RequestLoggerMiddleware
-from src.shared.redis import close_redis, get_redis, redis_healthcheck
+from src.shared.observability import init_observability
+from src.shared.redis import close_redis, redis_healthcheck
+from src.shared.security import limiter, limiter_exception_handler
 
 logger = structlog.get_logger()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Manage application lifecycle: startup and shutdown.
-
-    Args:
-        app: FastAPI application instance.
-
-    Yields:
-        When application is running.
-    """
-    # Startup
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Manage application lifecycle: startup and shutdown."""
     logger.info("starting_application", environment=settings.ENVIRONMENT)
-
     try:
-        # Initialize database
-        await init_db()
-        logger.info("database_initialized")
-
-        # Test Redis connection
         redis_ok = await redis_healthcheck()
-        if redis_ok:
-            logger.info("redis_connected")
-        else:
-            logger.warning("redis_connection_failed")
-
-        yield  # Application runs here
-
+        logger.info("redis_status", connected=redis_ok)
+        yield
     finally:
-        # Shutdown
         logger.info("shutting_down_application")
         await close_db()
         await close_redis()
@@ -56,11 +44,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    """Create and configure FastAPI application.
-
-    Returns:
-        Configured FastAPI application instance.
-    """
+    """Create and configure the FastAPI application."""
     app = FastAPI(
         title="DuttaMessenger",
         description="Private institutional messaging platform",
@@ -68,7 +52,12 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS Configuration
+    # ---- Observability (logging + tracing + metrics + Sentry) ------------
+    init_observability(app)
+
+    # ---- Middleware (order: innermost registered last) -------------------
+    app.add_middleware(RequestLoggerMiddleware)
+    app.add_middleware(CorrelationIdMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.CORS_ORIGINS,
@@ -77,13 +66,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Request logging middleware
-    app.add_middleware(RequestLoggerMiddleware)
+    # ---- Rate limiter ----------------------------------------------------
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, limiter_exception_handler)
 
-    # Exception handlers
+    # ---- Global exception handlers --------------------------------------
     @app.exception_handler(AppException)
-    async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
-        """Handle application-specific exceptions."""
+    async def _app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
         logger.error(
             "app_exception",
             error_code=exc.error_code,
@@ -102,8 +91,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-        """Handle unexpected exceptions."""
+    async def _general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         logger.error(
             "unhandled_exception",
             error=str(exc),
@@ -116,35 +104,67 @@ def create_app() -> FastAPI:
                 "error": {
                     "code": "INTERNAL_SERVER_ERROR",
                     "message": "An unexpected error occurred",
-                    "details": {} if not settings.DEBUG else {"error": str(exc)},
+                    "details": {"error": str(exc)} if settings.DEBUG else {},
                 }
             },
         )
 
-    # Health check endpoint
-    @app.get("/health")
-    async def health_check() -> dict[str, str]:
-        """Health check endpoint.
-
-        Returns:
-            Health status.
-        """
+    # ---- Health probe (Kubernetes readiness / liveness) ------------------
+    @app.get("/health", tags=["ops"], include_in_schema=False)
+    async def _health_check() -> dict[str, str]:
         return {"status": "healthy"}
 
-    # API v1 routes
+    # ---- Module routers (each behind a feature flag) ---------------------
     from src.modules.auth.router import router as auth_router
 
     app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 
-    # TODO: Include routers for other modules once they're created
-    # app.include_router(users_router, prefix=settings.API_V1_PREFIX)
-    # app.include_router(groups_router, prefix=settings.API_V1_PREFIX)
-    # app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
-    # app.include_router(acl_router, prefix=settings.API_V1_PREFIX)
-    # app.include_router(media_router, prefix=settings.API_V1_PREFIX)
-    # app.include_router(notifications_router, prefix=settings.API_V1_PREFIX)
+    if settings.ENABLE_USERS:
+        from src.modules.users.router import router as users_router
 
-    logger.info("fastapi_app_created", api_version=settings.API_V1_PREFIX)
+        app.include_router(users_router, prefix=settings.API_V1_PREFIX)
+
+    if settings.ENABLE_ACL:
+        from src.modules.acl.router import router as acl_router
+
+        app.include_router(acl_router, prefix=settings.API_V1_PREFIX)
+
+    if settings.ENABLE_GROUPS:
+        from src.modules.groups.router import router as groups_router
+
+        app.include_router(groups_router, prefix=settings.API_V1_PREFIX)
+
+    if settings.ENABLE_CHAT:
+        from src.modules.chat.router import router as chat_router
+
+        app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
+
+    if settings.ENABLE_MEDIA:
+        from src.modules.media.router import router as media_router
+
+        app.include_router(media_router, prefix=settings.API_V1_PREFIX)
+
+    if settings.ENABLE_NOTIFICATIONS:
+        from src.modules.notifications.router import router as notifications_router
+
+        app.include_router(notifications_router, prefix=settings.API_V1_PREFIX)
+
+    logger.info(
+        "fastapi_app_created",
+        api_version=settings.API_V1_PREFIX,
+        enabled_modules=[
+            name
+            for name, on in [
+                ("users", settings.ENABLE_USERS),
+                ("acl", settings.ENABLE_ACL),
+                ("groups", settings.ENABLE_GROUPS),
+                ("chat", settings.ENABLE_CHAT),
+                ("media", settings.ENABLE_MEDIA),
+                ("notifications", settings.ENABLE_NOTIFICATIONS),
+            ]
+            if on
+        ],
+    )
     return app
 
 
@@ -156,7 +176,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104 - intentional bind for container networks
         port=8000,
         reload=settings.DEBUG,
         log_level=settings.LOG_LEVEL,

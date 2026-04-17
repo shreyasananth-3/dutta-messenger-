@@ -103,3 +103,11 @@ jobs:
         run: pip-audit --strict || echo "::warning::pip-audit found advisories"
       - name: detect-secrets
         run: detect-secrets scan --baseline .secrets.baseline
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          exit-code: "0"      # warn-only while baselining; promote to "1" later
+          ignore-unfixed: true

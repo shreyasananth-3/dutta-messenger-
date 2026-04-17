@@ -61,6 +61,25 @@ class Settings(BaseSettings):
     DEFAULT_PAGE_LIMIT: int = 50
     MAX_PAGE_LIMIT: int = 100
 
+    # Observability
+    OTEL_ENABLED: bool = False
+    OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
+    OTEL_SERVICE_NAME: str = "dutta-messenger"
+    SENTRY_DSN: str = ""
+    SENTRY_TRACES_SAMPLE_RATE: float = 0.1
+
+    # Security
+    SECRETS_BACKEND: str = "env"  # "env" | "aws" | "gcp" | "vault"
+    RATE_LIMIT_DEFAULT: str = "300/minute"
+
+    # Feature flags (defaults OFF — each module is turned on explicitly)
+    ENABLE_USERS: bool = False
+    ENABLE_ACL: bool = False
+    ENABLE_GROUPS: bool = False
+    ENABLE_CHAT: bool = False
+    ENABLE_MEDIA: bool = False
+    ENABLE_NOTIFICATIONS: bool = False
+
     class Config:
         """Pydantic settings configuration."""
 

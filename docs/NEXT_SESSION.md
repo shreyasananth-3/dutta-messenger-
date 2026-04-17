@@ -25,7 +25,7 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | 2 — Backfill tests for `shared/` + `auth` | ✅ done | `c669559` |
 | Chore: Makefile + run_tests.sh through venv | ✅ done | `c80828a`, `48062c3` |
 | Manual live-server smoke (auth) | ✅ done — recipe at [docs/MANUAL_SMOKE.md](MANUAL_SMOKE.md) | |
-| 3 — 7 mini-RFCs | ⏳ next | |
+| 3 — 7 mini-RFCs | ✅ drafted (status=draft) — see [docs/design/](design/) — **7 open questions below need human sign-off before Stage 4** | |
 | 4a — `users` module | ⏳ | |
 | 4b — `acl` module | ⏳ | |
 | 4c — `groups` module | ⏳ | |
@@ -52,7 +52,54 @@ Small items that aren't a full stage but shouldn't be lost:
 | **Gap C — refresh tokens not rotated** (surfaced by smoke) — old refresh token stays valid after `/auth/refresh`, no replay detection | ⏳ small service-layer fix + test | [MANUAL_SMOKE.md § Gap C](MANUAL_SMOKE.md) |
 | **E2E tests (`tests/e2e/`)** — full-journey pytest: register → invite → accept → create group → send message → read → react → push | ⏳ deferred to Stage 6 | `tests/e2e/` is empty on purpose; E2E needs all modules to exist first |
 | **72 pre-existing ruff findings** surfaced by `make lint` (S105 hardcoded-password warnings on `config.py` defaults, I001 import-sort across auth + shared) — was invisible before `c80828a` wired `make lint` to the venv | ⏳ backlog | fix with `make format` pass + review, or add targeted `# noqa` for intentional dev defaults |
-| **Push local commits to origin** — `c80828a`, `48062c3`, and this smoke-doc commit are unpushed | ⏳ after smoke lands | `git push origin main` |
+| **Push local commits to origin** — chore + smoke + Stage-3 RFC commits are all unpushed | ⏳ after you review Stage 3 open questions | `git push origin main` |
+
+---
+
+## Stage 3 open questions — need the human's sign-off before Stage 4
+
+The 7 RFCs ship with status `draft`. Each surfaced one business-side question
+the backend can't decide alone. Paste your decision next to each bullet, then
+flip the RFC's frontmatter `status: draft → accepted`.
+
+1. **[idempotency.md](design/idempotency.md)** — Redis-backed Idempotency-Key
+   TTL: **24 hours** (default) vs **4 hours** (less memory, less tolerant of
+   overnight offline retries). Decision needed before chat/media are built.
+
+2. **[tenant-isolation.md](design/tenant-isolation.md)** — Should a read-only
+   Postgres role `dm_auditor` exist for ops queries against `audit_logs`
+   (no API, DB-only)? Safe to add since `audit_logs` has no RLS, but needs
+   a policy call before first production deploy.
+
+3. **[websocket-scaling.md](design/websocket-scaling.md)** — Two new frame
+   types (`token.expiring`, `auth.refresh`) were added for in-session token
+   rotation. Should `reference-docs/modules/chat/WEBSOCKET.md` be updated
+   NOW (Flutter team gets the spec early) or DEFERRED to Stage 4d?
+
+4. **[message-partitioning.md](design/message-partitioning.md)** — Archival
+   window is proposed at **18 months**. Any regulatory retention minimum for
+   Indian school communications that forces a longer hot window (e.g.,
+   5 years for academic records)? If yes, archival window tightens.
+
+5. **[api-versioning.md](design/api-versioning.md)** — Canonical error
+   envelope is fixed. Should `details` be `{}` (always present) or omitted
+   when empty? UI team preference — talk to Flutter lead.
+
+6. **[privacy-erasure.md](design/privacy-erasure.md)** — Proposed erasure
+   SLA is **30 days** (matches DPDP default). If the school's own privacy
+   notice commits to something shorter (e.g., 10 days), the Celery task SLA
+   in `slo.md` must tighten. **DPDP §9 (child consent) + §13 (Grievance
+   Officer) + 72h breach notification** need explicit legal sign-off — not a
+   backend decision.
+
+7. **[slo.md](design/slo.md)** — Availability SLO is **99.95%** (≈ 22 min
+   downtime budget per month). Does the school's IT lead accept that
+   number? And does Saturday morning work as the quarterly 30-min
+   maintenance window?
+
+Until these 7 are answered, Stage 4 can START (the code patterns don't
+change based on the answers) but modules must keep their RFC-driven
+behaviour easy to tune (e.g., TTL via config, not hardcoded).
 
 ---
 

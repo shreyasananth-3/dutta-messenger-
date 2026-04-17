@@ -21,12 +21,13 @@ from src.modules.auth.models.request_models import (
     ChangePasswordRequest,
 )
 from src.modules.auth.models.response_models import (
-    InstitutionResponse,
-    LoginResponse,
-    RegistrationResponse,
-    RefreshTokenResponse,
-    InviteUserResponse,
     AcceptInvitationResponse,
+    InstitutionResponse,
+    InvitationResponse,
+    InviteUserResponse,
+    LoginResponse,
+    RefreshTokenResponse,
+    RegistrationResponse,
     UserResponse,
 )
 from src.modules.auth.services.auth_service import AuthService
@@ -70,6 +71,9 @@ async def create_institution(
     except AppException as e:
         await db.rollback()
         raise e.to_http_exception()
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
         logger.error("create_institution_error", error=str(e))
@@ -122,6 +126,9 @@ async def register(
     except AppException as e:
         await db.rollback()
         raise e.to_http_exception()
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
         logger.error("register_error", error=str(e))
@@ -166,6 +173,9 @@ async def login(
     except AppException as e:
         await db.rollback()
         raise e.to_http_exception()
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
         logger.error("login_error", error=str(e))
@@ -210,6 +220,9 @@ async def refresh_token(
     except AppException as e:
         await db.rollback()
         raise e.to_http_exception()
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
         logger.error("refresh_token_error", error=str(e))
@@ -255,6 +268,9 @@ async def invite_user(
     except AppException as e:
         await db.rollback()
         raise e.to_http_exception()
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
         logger.error("invite_user_error", error=str(e))
@@ -296,6 +312,9 @@ async def change_password(
     except AppException as e:
         await db.rollback()
         raise e.to_http_exception()
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
         logger.error("change_password_error", error=str(e))

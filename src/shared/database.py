@@ -7,7 +7,8 @@ async best practices with proper lifecycle management.
 import uuid
 from typing import Any
 
-from sqlalchemy import Column, DateTime, String, inspect
+from sqlalchemy import Column, DateTime, inspect
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql import func
@@ -44,8 +45,10 @@ class BaseModel(Base):
 
     __abstract__ = True
 
+    # Native PostgreSQL UUID. `as_uuid=False` keeps Python-side values as
+    # strings to match service code that uses `str(uuid.uuid4())` everywhere.
     id = Column(
-        String(36),
+        UUID(as_uuid=False),
         primary_key=True,
         default=lambda: str(uuid.uuid4()),
         nullable=False,
@@ -55,10 +58,15 @@ class BaseModel(Base):
         server_default=func.now(),
         nullable=False,
     )
+    # `updated_at` is bumped by the per-table DB trigger
+    # `update_<table>_updated_at` defined in the baseline schema. We do NOT
+    # set Python-side `onupdate=func.now()` here because that causes SQLAlchemy
+    # to expire the attribute post-flush and lazy-load it via SELECT — an
+    # async I/O attempted from a sync context (Pydantic's `from_orm`),
+    # raising `MissingGreenlet`. The DB trigger is the single source of truth.
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
-        onupdate=func.now(),
         nullable=False,
     )
 
@@ -125,4 +133,6 @@ def model_to_dict(obj: Any) -> dict[str, Any]:
     """
     if not obj:
         return {}
-    return {column.name: getattr(obj, column.name) for column in inspect(obj).columns}
+    # `inspect(instance).mapper.columns` is the correct accessor; the bare
+    # `.columns` attribute exists on the Mapper, not the InstanceState.
+    return {column.name: getattr(obj, column.name) for column in inspect(obj).mapper.columns}

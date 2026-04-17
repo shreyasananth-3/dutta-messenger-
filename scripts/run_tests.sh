@@ -36,14 +36,20 @@ PYTEST_EXIT=${PIPESTATUS[0]}
 set -e
 
 # Extract a short coverage summary the humans can skim.
+# Heredoc is quoted ('PY') so bash does NOT expand ${...}/{...} inside the
+# Python body — we pass the run's dynamic values through env vars instead.
 if [ -f "${LATEST_DIR}/coverage.json" ]; then
-    python3 - <<PY > "${LATEST_DIR}/summary.md"
-import json, pathlib
-data = json.loads(pathlib.Path("${LATEST_DIR}/coverage.json").read_text())
+    export LATEST_DIR TIMESTAMP PYTEST_EXIT
+    python3 - <<'PY' > "${LATEST_DIR}/summary.md"
+import json, os, pathlib
+latest = os.environ["LATEST_DIR"]
+timestamp = os.environ["TIMESTAMP"]
+exit_code = os.environ["PYTEST_EXIT"]
+data = json.loads(pathlib.Path(f"{latest}/coverage.json").read_text())
 totals = data.get("totals", {})
-print(f"# Test run — ${TIMESTAMP}")
+print(f"# Test run — {timestamp}")
 print()
-print(f"- Exit code: ${PYTEST_EXIT}")
+print(f"- Exit code: {exit_code}")
 print(f"- Line coverage: {totals.get('percent_covered', 0):.2f}%")
 print(f"- Branch coverage: {totals.get('percent_covered_display', 'n/a')}%")
 print(f"- Statements covered: {totals.get('covered_lines', 0)}/{totals.get('num_statements', 0)}")

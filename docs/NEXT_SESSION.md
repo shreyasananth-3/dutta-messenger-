@@ -22,8 +22,8 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | 0 — Tooling, CI, test harness | ✅ done | `58cd5eb` |
 | 1 — Observability + security baseline | ✅ done | `7197905` |
 | UI contract (auth slice) | ✅ done | `07abfd4` |
-| 2 — Backfill tests for `shared/` + `auth` | ⏳ next | |
-| 3 — 7 mini-RFCs | ⏳ | |
+| 2 — Backfill tests for `shared/` + `auth` | ✅ done | |
+| 3 — 7 mini-RFCs | ⏳ next | |
 | 4a — `users` module | ⏳ | |
 | 4b — `acl` module | ⏳ | |
 | 4c — `groups` module | ⏳ | |
@@ -173,9 +173,49 @@ DATABASE_URL="postgresql+asyncpg://guru@localhost:5432/dutta_messenger_test" \
 
 ## Last POST-FLIGHT summary
 
-Stage 1 left the codebase in a green state:
-- `shared/` + `auth` module code unchanged and still working
-- All 6 other module directories intentionally empty (routers not registered, flags off)
-- No tests yet — that is literally Stage 2's purpose
-- CI green on bootstrap workflow (will be exercised once tests exist)
-- README points Flutter devs at `docs/ui-contract/`
+Stage 2 added the test backfill and corrected several latent bugs that were
+silently shipping in Stage 1's code:
+
+- **240 tests passing**, 0 failures, ~14s wall time.
+- **Coverage:** `shared/` 95.51%, `modules/auth/` 90.35% — both above their
+  CLAUDE.md gates (85% / 90%).
+- **Latent bugs fixed while writing tests** (each meets the POST-FLIGHT bar
+  "code matches the migration / docs"):
+  - `audit_logs` table mismatched `src/shared/security/audit.py` →
+    migration `0002_align_audit_logs` aligns columns
+    (`actor_id` / `institution_id` / `metadata`).
+  - `refresh_tokens` lacked `updated_at` while inheriting `BaseModel` →
+    migration `0003_refresh_tokens_updated_at` adds it.
+  - `BaseModel.id` was `String(36)` while the schema uses native `UUID` →
+    switched to `postgresql.UUID(as_uuid=False)`. Auth FK columns updated to
+    match.
+  - `BaseModel.updated_at` had a Python-side `onupdate=func.now()` that
+    expired the column post-flush and triggered async lazy-loading from
+    Pydantic's `from_orm` (`MissingGreenlet`) → removed; the per-table DB
+    trigger is the single source of truth.
+  - Auth route handlers caught HTTPException as `Exception` and converted
+    every 4xx into a 500 → added `except HTTPException: raise` between the
+    `AppException` and bare `Exception` branches.
+  - `passlib==1.7.4` couldn't read `bcrypt==5.0.0`'s version (no `__about__`)
+    and 72-byte-flagged every password → switched `auth_service` to use the
+    `bcrypt` library directly with truncation safety.
+  - Auth `routes/auth_routes.py` referenced `InvitationResponse` without
+    importing it; `Institution` / `User` declared relationships to `Role` /
+    `Group` / `UserRole` whose modules don't exist yet → added the missing
+    import; dropped the unbuilt-module relationships.
+  - `model_to_dict` called `inspect(instance).columns` which doesn't exist
+    on `InstanceState` → corrected to `inspect(instance).mapper.columns`.
+- **Test infrastructure:**
+  - `tests/conftest.py` now auto-loads `.env` so `TEST_DATABASE_URL` works
+    out of the box; default falls back to the Homebrew Postgres recipe.
+  - `pyproject.toml` pins `asyncio_default_*_loop_scope = "session"` so the
+    session-scoped engine and per-test sessions share one loop (no more
+    "Future attached to a different loop"). Adds
+    `concurrency = ["thread", "greenlet"]` to coverage so coroutine lines
+    inside FastAPI handlers are tracked.
+  - `scripts/run_tests.sh` heredoc was unquoted, so `${...}` and `{...}` got
+    bash-expanded and the per-module summary was empty → switched to
+    `<<'PY'` and passed values via env vars.
+- **OpenAPI snapshot** regenerated at `docs/ui-contract/openapi.json` —
+  6 paths, the auth slice. Diff is deliberate (first commit of the file).
+- Other 6 module directories still intentionally empty.

@@ -117,6 +117,12 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# All async fixtures and tests share one session-scoped loop so that
+# session-scoped DB engines / connection pools opened in fixtures can be
+# safely re-used and torn down on the same loop. Avoids the
+# "got Future attached to a different loop" failure under pytest-asyncio 1.x.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 addopts = [
     "-ra",
     "--strict-markers",
@@ -139,6 +145,10 @@ markers = [
 [tool.coverage.run]
 branch = true
 source = ["src"]
+# Track greenlet/asyncio contexts so pytest-cov records lines inside
+# FastAPI handlers invoked via AsyncClient + httpx ASGI transport. Without
+# this, route handler bodies are marked as missed despite executing.
+concurrency = ["thread", "greenlet"]
 omit = [
     "*/tests/*",
     "*/migrations/*",

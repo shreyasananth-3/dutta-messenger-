@@ -8,8 +8,8 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import structlog
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,8 +42,15 @@ from src.modules.auth.models.response_models import (
 
 logger = structlog.get_logger()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt's 72-byte limit applies to the encoded password. We truncate
+# silently rather than rejecting longer inputs because the validators layer
+# already enforces a max length below the limit; this just defends against
+# accidental upstream changes.
+_BCRYPT_MAX_BYTES = 72
+
+
+def _truncate(password: str) -> bytes:
+    return password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
 
 
 class AuthService:
@@ -51,28 +58,19 @@ class AuthService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash a password for storage.
-
-        Args:
-            password: Plain text password.
-
-        Returns:
-            Hashed password.
-        """
-        return pwd_context.hash(password)
+        """Hash a password with bcrypt and return the encoded string."""
+        return bcrypt.hashpw(_truncate(password), bcrypt.gensalt()).decode("utf-8")
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash.
-
-        Args:
-            plain_password: Plain text password to verify.
-            hashed_password: Hashed password from database.
-
-        Returns:
-            True if password matches, False otherwise.
-        """
-        return pwd_context.verify(plain_password, hashed_password)
+        """Verify a password against its bcrypt hash."""
+        try:
+            return bcrypt.checkpw(
+                _truncate(plain_password), hashed_password.encode("utf-8")
+            )
+        except ValueError:
+            # Malformed hash — treat as a non-match rather than crashing.
+            return False
 
     @staticmethod
     async def create_institution(
@@ -276,7 +274,7 @@ class AuthService:
         )
 
         # Store refresh token hash
-        refresh_token_hash = pwd_context.hash(refresh_token)
+        refresh_token_hash = AuthService.hash_password(refresh_token)
         expires_at = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
         db_refresh_token = RefreshToken(
@@ -336,7 +334,7 @@ class AuthService:
         refresh_token = create_refresh_token(user_id, institution_id)
 
         # Store new refresh token hash
-        refresh_token_hash = pwd_context.hash(refresh_token)
+        refresh_token_hash = AuthService.hash_password(refresh_token)
         expires_at = get_utc_now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
         db_refresh_token = RefreshToken(

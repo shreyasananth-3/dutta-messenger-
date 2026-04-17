@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -23,13 +25,38 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+
+def _load_dotenv() -> None:
+    """Populate os.environ from the repo root .env if present.
+
+    Must run before `src.config` is imported so `Settings()` picks up the
+    right DATABASE_URL / SECRET_KEY / etc. Fixtures that read os.environ
+    directly (e.g. TEST_DATABASE_URL below) see the same values.
+    """
+    env_file = Path(__file__).resolve().parent.parent / ".env"
+    if not env_file.is_file():
+        return
+    for raw in env_file.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+_load_dotenv()
+
+
 # ---------------------------------------------------------------------------
 # Test DB URL — prefer a dedicated test database so integration tests never
-# accidentally touch the dev DB. Override via TEST_DATABASE_URL.
+# accidentally touch the dev DB. Override via TEST_DATABASE_URL in .env.
+# Default matches the local Homebrew Postgres recipe (docs/LOCAL_SETUP.md):
+# role = current Mac username, no password.
 # ---------------------------------------------------------------------------
+_default_user = os.environ.get("USER", "postgres")
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger_test",
+    f"postgresql+asyncpg://{_default_user}@localhost:5432/dutta_messenger_test",
 )
 
 
@@ -77,7 +104,6 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     Overrides the `get_db` dependency so every request uses the rolled-back
     test session.
     """
-    # Local import so `src.main` can rely on fixtures being in place first.
     from src.main import app
     from src.shared.database import get_db
 
@@ -95,25 +121,23 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 def auth_headers() -> Any:
     """Factory fixture: `auth_headers(user)` returns a Bearer-token header dict.
 
-    Kept here so every module's tests use the same helper.
+    Accepts a SQLAlchemy model, a dict with `id`/`institution_id` keys, or any
+    object with `.id` and `.institution_id` attributes.
     """
 
     def _make(user: Any) -> dict[str, str]:
-        # Lazy import to avoid circular imports during collection.
-        import uuid as _uuid
-
         from src.shared.middleware.auth import create_access_token
 
+        user_id = user["id"] if isinstance(user, dict) else user.id
+        inst_id = (
+            user["institution_id"]
+            if isinstance(user, dict)
+            else user.institution_id
+        )
         token = create_access_token(
-            user_id=_uuid.UUID(str(user.id)),
-            institution_id=_uuid.UUID(str(user.institution_id)),
+            user_id=uuid.UUID(str(user_id)),
+            institution_id=uuid.UUID(str(inst_id)),
         )
         return {"Authorization": f"Bearer {token}"}
 
     return _make
-
-
-@pytest.fixture(autouse=True)
-def _freeze_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Use a deterministic JWT secret in tests for reproducibility."""
-    monkeypatch.setenv("SECRET_KEY", "test-secret-key-do-not-use-in-prod")

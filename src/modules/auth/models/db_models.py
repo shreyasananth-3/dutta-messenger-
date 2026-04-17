@@ -1,9 +1,7 @@
 """SQLAlchemy ORM models for auth module."""
 
-import uuid
-from datetime import datetime, timezone
-
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from src.shared.database import BaseModel
@@ -27,8 +25,6 @@ class Institution(BaseModel):
 
     # Relationships
     users = relationship("User", back_populates="institution", cascade="all, delete-orphan")
-    roles = relationship("Role", back_populates="institution", cascade="all, delete-orphan")
-    groups = relationship("Group", back_populates="institution", cascade="all, delete-orphan")
     invitations = relationship(
         "UserInvitation",
         back_populates="institution",
@@ -44,7 +40,9 @@ class User(BaseModel):
 
     __tablename__ = "users"
 
-    institution_id = Column(String(36), ForeignKey("institutions.id"), nullable=False, index=True)
+    institution_id = Column(
+        UUID(as_uuid=False), ForeignKey("institutions.id"), nullable=False, index=True
+    )
     email = Column(String(255), nullable=False)
     password_hash = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
@@ -58,7 +56,6 @@ class User(BaseModel):
 
     # Relationships
     institution = relationship("Institution", back_populates="users")
-    roles = relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship(
         "RefreshToken",
         back_populates="user",
@@ -84,13 +81,17 @@ class UserInvitation(BaseModel):
 
     __tablename__ = "user_invitations"
 
-    institution_id = Column(String(36), ForeignKey("institutions.id"), nullable=False, index=True)
+    institution_id = Column(
+        UUID(as_uuid=False), ForeignKey("institutions.id"), nullable=False, index=True
+    )
     email = Column(String(255), nullable=False)
-    invited_by_user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    invited_by_user_id = Column(
+        UUID(as_uuid=False), ForeignKey("users.id"), nullable=False
+    )
     token = Column(String(255), nullable=False, unique=True, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     accepted_at = Column(DateTime(timezone=True), nullable=True)
-    accepted_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    accepted_user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=True)
 
     # Relationships
     institution = relationship("Institution", back_populates="invitations")
@@ -114,7 +115,9 @@ class RefreshToken(BaseModel):
 
     __tablename__ = "refresh_tokens"
 
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(
+        UUID(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True
+    )
     token_hash = Column(String(255), nullable=False, unique=True)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     revoked_at = Column(DateTime(timezone=True), nullable=True)

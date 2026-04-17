@@ -21,6 +21,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# Prefer the repo's venv if present, so the script works without
+# `source .venv/bin/activate`. Falls back silently if no venv exists.
+if [ -x "${ROOT_DIR}/.venv/bin/pytest" ]; then
+    export PATH="${ROOT_DIR}/.venv/bin:${PATH}"
+fi
+
 TIMESTAMP="$(date +%Y-%m-%d_%H%M%S)"
 LATEST_DIR="tests/results/latest"
 ARCHIVE_DIR="tests/results/${TIMESTAMP}"

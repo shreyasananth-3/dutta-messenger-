@@ -1,0 +1,136 @@
+# Pick-up Pointer — DuttaMessenger
+
+> **Paste this file's path (or its contents) into a fresh Claude Code session to resume work.**
+> Claude will also auto-load `CLAUDE.md` (pre-flight + post-flight rules) and `~/.claude/projects/.../memory/MEMORY.md` (user preferences).
+
+---
+
+## Where we are
+
+| Stage | Status | Commit |
+|-------|--------|--------|
+| 0 — Tooling, CI, test harness | ✅ done | `58cd5eb` |
+| 1 — Observability + security baseline | ✅ done | `7197905` |
+| UI contract (auth slice) | ✅ done | `07abfd4` |
+| 2 — Backfill tests for `shared/` + `auth` | ⏳ next | |
+| 3 — 7 mini-RFCs | ⏳ | |
+| 4a — `users` module | ⏳ | |
+| 4b — `acl` module | ⏳ | |
+| 4c — `groups` module | ⏳ | |
+| 4d — `chat` module (incl. WebSocket) | ⏳ | |
+| 4e — `media` module | ⏳ | |
+| 4f — `notifications` module | ⏳ | |
+| 5 — UI contract (all modules) | ⏳ | |
+| 6 — Load + E2E + seed | ⏳ | |
+
+**Repo:** https://github.com/shreyasananth-3/dutta-messenger-.git
+**Branch:** `main` (trunk-based, every module lands behind an `ENABLE_*` feature flag that defaults OFF).
+
+---
+
+## The two docs Claude must read before doing anything
+
+1. **`/Users/guru/.claude/plans/now-go-through-the-twinkly-wombat.md`** — the full plan (v3, architect-reviewed, right-sized for a 1,000–5,000 user school). Stages, parallelization strategy, cross-cutting standards, proof checklist.
+2. **`CLAUDE.md`** at repo root — MANDATORY PRE-FLIGHT + MANDATORY POST-FLIGHT. Claude auto-loads it.
+
+Everything else (module contracts, schema, conventions) is in `reference-docs/`.
+
+---
+
+## How to resume in a new session
+
+Paste one of these prompts to start:
+
+### "Continue the plan from where we left off"
+```
+Read /Users/guru/Desktop/Work/Radlabs/DuttaMessenger/docs/NEXT_SESSION.md, then
+/Users/guru/.claude/plans/now-go-through-the-twinkly-wombat.md, then CLAUDE.md.
+Pick up at the next incomplete stage. Run POST-FLIGHT after each stage. Push
+to GitHub after every stage boundary.
+```
+
+### "Jump to a specific module"
+```
+Start Stage 4c (groups module) per the plan. Before writing code:
+  1. Read reference-docs/modules/groups/MODULE.md and SCHEMA.sql
+  2. Copy them into src/modules/groups/docs/
+  3. Fill in a threat model from docs/design/threat-model.template.md
+Then build models → service → routes → tests, meeting the 85% coverage
+gate, and run POST-FLIGHT before reporting done.
+```
+
+### "Explain current state"
+```
+Read docs/NEXT_SESSION.md and summarise what's done and what's pending.
+Do not make changes.
+```
+
+---
+
+## The database — where is it?
+
+There is **no committed DB data file**. Three layers to know:
+
+1. **Schema definition (version-controlled):**
+   - `migrations/001_init_schema.sql` — the hand-written canonical SQL with all 20 tables.
+   - `migrations/versions/0001_baseline_schema.py` — wraps that SQL in an Alembic revision with a tested `downgrade()`.
+   - Future schema changes: `make migrate-new MSG="..."` creates a new Alembic revision; never another raw SQL file.
+
+2. **Running database (ephemeral, local):**
+   - Started by `docker compose up -d` — Postgres 16 in a container.
+   - Data lives in the Docker volume `postgres_data` (defined in `docker-compose.yml`).
+   - Destroyed when you run `docker compose down -v` (the `-v` flag wipes the volume).
+   - Connection URL: `postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger` (see `src/config.py` and `.env.example`).
+
+3. **Applying the schema to a running DB:**
+   ```bash
+   docker compose up -d       # start Postgres
+   make migrate               # alembic upgrade head → runs 0001_baseline_schema
+   ```
+
+**Production will use managed Postgres** (RDS / Cloud SQL) — same migration command, just a different `DATABASE_URL`.
+
+---
+
+## Ground rules Claude must honour (summary — full version in CLAUDE.md)
+
+- **Before writing any module code:** read `reference-docs/modules/{name}/MODULE.md` and `SCHEMA.sql`. Copy them into `src/modules/{name}/docs/`.
+- **After every task:** run POST-FLIGHT (sections A–G in CLAUDE.md). Report which boxes were verified.
+- **Every module ships behind a feature flag** (`ENABLE_{NAME}` in `config.py`). Default OFF.
+- **Every migration has a tested `downgrade()`.**
+- **Every endpoint has the 7-point test checklist** (happy/401/403/400/404/idempotent/Unicode).
+- **Every mutation writes to `audit_logs`** via `src/shared/security/audit.py`.
+- **Every service method on tenant-scoped tables** uses `tenant_scoped_query()` from `src/shared/security/tenant.py`.
+
+---
+
+## What's already built and re-usable
+
+| Purpose | Location |
+|---------|----------|
+| Async DB engine + session + `get_db` dependency | `src/shared/database.py` |
+| JWT middleware (`get_current_user`) + token helpers | `src/shared/middleware/auth.py` |
+| ACL decorator | `src/shared/middleware/acl.py` |
+| Standard response helpers (`success_response`, `paginated_response`) | `src/shared/responses.py` |
+| Exceptions (`AppException`, `NotFoundError`, `PermissionDeniedError`, …) | `src/shared/exceptions.py` |
+| Cursor pagination encode/decode | `src/shared/utils/pagination.py` |
+| Input validators | `src/shared/utils/validators.py` |
+| Datetime helpers | `src/shared/utils/datetime_utils.py` |
+| **Observability** (structlog + OTel + Prometheus + Sentry + correlation IDs) | `src/shared/observability/` |
+| **Security** (rate limit, tenant scope, audit log, secrets provider) | `src/shared/security/` |
+| Test harness (async `db_session`, `client`, `auth_headers`) | `tests/conftest.py` |
+| Factories | `tests/factories.py` |
+| Test runner with proof folder | `scripts/run_tests.sh` |
+| OpenAPI exporter | `scripts/export_openapi.py` |
+| Threat-model template | `docs/design/threat-model.template.md` |
+
+---
+
+## Last POST-FLIGHT summary
+
+Stage 1 left the codebase in a green state:
+- `shared/` + `auth` module code unchanged and still working
+- All 6 other module directories intentionally empty (routers not registered, flags off)
+- No tests yet — that is literally Stage 2's purpose
+- CI green on bootstrap workflow (will be exercised once tests exist)
+- README points Flutter devs at `docs/ui-contract/`

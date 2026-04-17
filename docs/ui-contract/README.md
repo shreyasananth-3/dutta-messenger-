@@ -204,6 +204,16 @@ This gives you typed Dart models and a pre-built client for every endpoint. Rege
 
 ---
 
+## 8a. Using Claude Code inside the Flutter repo
+
+If your Flutter team uses Claude Code, copy [`CLAUDE_FLUTTER.md`](CLAUDE_FLUTTER.md) into the **Flutter repo's** `CLAUDE.md` (merge with any existing file). It teaches Claude:
+- The backend's URL, auth flow, envelope, pagination, rate limits.
+- How to read the per-module contracts before writing Dart code.
+- Project conventions (networking, state, storage, WebSocket reconnect).
+- Starter prompts your team can use ("build a login screen against the auth contract…").
+
+---
+
 ## 9. Per-module contracts
 
 - [**auth.md**](auth.md) — the 6 auth endpoints (live today)

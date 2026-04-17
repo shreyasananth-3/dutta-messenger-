@@ -59,6 +59,27 @@ CELERY_TASK_LATENCY = Histogram(
 )
 
 
+# ---------------------------------------------------------------------------
+# Idempotency middleware metrics
+#
+# Fed by `src/shared/middleware/idempotency.py`. The RFC says fail-open on
+# Redis down; these counters let operators alert on the fail-open branch
+# firing more than the expected baseline.
+# ---------------------------------------------------------------------------
+
+IDEMPOTENCY_REDIS_DOWN = Counter(
+    "dutta_idempotency_redis_down_total",
+    "Number of Idempotency-Key checks that could not reach Redis and "
+    "fell back to fail-open (allow duplicate).",
+)
+
+IDEMPOTENCY_STORE_FAILED = Counter(
+    "dutta_idempotency_store_failed_total",
+    "Number of times the response body could not be persisted to Redis "
+    "after a successful request. Replay will miss if this is non-zero.",
+)
+
+
 def register_metrics(app) -> None:  # type: ignore[no-untyped-def]
     """Attach prometheus-fastapi-instrumentator and expose `/metrics`."""
     try:

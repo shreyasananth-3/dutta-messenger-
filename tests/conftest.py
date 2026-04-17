@@ -48,6 +48,21 @@ _load_dotenv()
 
 
 # ---------------------------------------------------------------------------
+# Feature flags for the test environment.
+#
+# Production ships with every `ENABLE_*` flag defaulting OFF (see
+# `src/config.py`) so modules only go live behind a deliberate decision.
+# The TEST environment is different: we want each built module's routes
+# reachable on every test run. Force the flag ON for every module that
+# has actually been implemented. Adding a new module? Add the flag here
+# the same PR. Do NOT flip a flag before the module's `router.py` exists
+# — `src/main.py` will ImportError at app creation.
+# ---------------------------------------------------------------------------
+for _flag in ("ENABLE_USERS",):
+    os.environ[_flag] = "true"
+
+
+# ---------------------------------------------------------------------------
 # Test DB URL — prefer a dedicated test database so integration tests never
 # accidentally touch the dev DB. Override via TEST_DATABASE_URL in .env.
 # Default matches the local Homebrew Postgres recipe (docs/LOCAL_SETUP.md):

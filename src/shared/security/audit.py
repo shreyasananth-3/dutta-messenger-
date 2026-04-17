@@ -36,6 +36,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = structlog.get_logger()
 
 
+SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000000"
+"""Sentinel UUID for system / background actors (seed script, Celery housekeeping).
+
+Use this when `write_audit()` is called outside an authenticated request.
+Per `docs/design/tenant-isolation.md` §2.1 — the `actor_id` column is
+`NOT NULL`, so a sentinel beats a nullable column.
+"""
+
+
 class AuditEvent(StrEnum):
     """Canonical list of audited actions.
 
@@ -48,6 +57,10 @@ class AuditEvent(StrEnum):
     USER_LOGIN_FAILURE = "user.login.failure"
     USER_PASSWORD_CHANGED = "user.password.changed"
     USER_DELETED = "user.deleted"
+    USER_PROFILE_UPDATED = "user.profile.updated"
+    USER_SUSPENDED = "user.suspended"
+    USER_REACTIVATED = "user.reactivated"
+    USER_SETTINGS_UPDATED = "user.settings.updated"
     ROLE_GRANTED = "acl.role.granted"
     ROLE_REVOKED = "acl.role.revoked"
     GROUP_CREATED = "group.created"

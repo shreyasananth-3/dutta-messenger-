@@ -31,7 +31,7 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | 4b — `acl` module | ⏳ | |
 | 4c — `groups` module | ⏳ | |
 | 4d — `chat` module (incl. WebSocket) | ⏳ | |
-| 4e — `media` module | ⏳ | |
+| 4e — `media` module | ✅ done — PR #5 (`track/media`, 4 commits `5430bda…a03b02b`); follow-ups in [docs/FOLLOWUPS.md](FOLLOWUPS.md) §Media | |
 | 4f — `notifications` module | ⏳ | |
 | 5 — UI contract (all modules) | ⏳ | |
 | 6 — Load + **E2E (tests/e2e/)** + seed | ⏳ | |
@@ -54,6 +54,7 @@ Small items that aren't a full stage but shouldn't be lost:
 | **E2E tests (`tests/e2e/`)** — full-journey pytest: register → invite → accept → create group → send message → read → react → push | ⏳ deferred to Stage 6 | `tests/e2e/` is empty on purpose; E2E needs all modules to exist first |
 | **72 pre-existing ruff findings** surfaced by `make lint` (S105 hardcoded-password warnings on `config.py` defaults, I001 import-sort across auth + shared) — was invisible before `c80828a` wired `make lint` to the venv | ⏳ backlog | fix with `make format` pass + review, or add targeted `# noqa` for intentional dev defaults |
 | **Push local commits to origin** — chore + smoke + Stage-3 RFC commits are all unpushed | ⏳ after you review Stage 3 open questions | `git push origin main` |
+| **Media module follow-ups (9 rows)** — test gaps (audit-row SELECT, `extra="forbid"`, max-length filename, live MinIO smoke, clean-slate migration diff), hardening (RLS on `media_files`, MIME inspection at `complete`), cross-cutting owned by shared (Redis race on `Idempotency-Key`, `moto` in media tests) | ⏳ follow-up PR after #5 merges | [docs/FOLLOWUPS.md](FOLLOWUPS.md) §Media |
 
 ---
 

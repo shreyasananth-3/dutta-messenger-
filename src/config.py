@@ -17,6 +17,9 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger"
+    TEST_DATABASE_URL: str = (
+        "postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger_test"
+    )
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 0
 
@@ -85,6 +88,7 @@ class Settings(BaseSettings):
 
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"
 
 
 settings = Settings()

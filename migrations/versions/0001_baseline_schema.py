@@ -55,11 +55,74 @@ def _baseline_sql() -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _split_statements(sql: str) -> list[str]:
+    """Split a SQL script into individual statements.
+
+    Needed because asyncpg's prepared-statement API cannot execute multiple
+    statements in one call. We respect:
+      - line comments (``--``)
+      - dollar-quoted bodies (``$$ ... $$`` used in trigger functions)
+      - simple string literals
+    """
+    statements: list[str] = []
+    buf: list[str] = []
+    in_dollar = False
+    in_line_comment = False
+    in_string = False
+
+    i = 0
+    while i < len(sql):
+        ch = sql[i]
+        nxt = sql[i + 1] if i + 1 < len(sql) else ""
+
+        if in_line_comment:
+            buf.append(ch)
+            if ch == "\n":
+                in_line_comment = False
+            i += 1
+            continue
+
+        if not in_dollar and not in_string and ch == "-" and nxt == "-":
+            in_line_comment = True
+            buf.append(ch)
+            i += 1
+            continue
+
+        if not in_string and ch == "$" and nxt == "$":
+            in_dollar = not in_dollar
+            buf.append("$$")
+            i += 2
+            continue
+
+        if not in_dollar and ch == "'":
+            in_string = not in_string
+            buf.append(ch)
+            i += 1
+            continue
+
+        if ch == ";" and not in_dollar and not in_string:
+            stmt = "".join(buf).strip()
+            if stmt:
+                statements.append(stmt)
+            buf = []
+            i += 1
+            continue
+
+        buf.append(ch)
+        i += 1
+
+    tail = "".join(buf).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
 def upgrade() -> None:
     """Create all baseline tables by executing the canonical SQL file."""
-    op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
-    op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto";')
-    op.execute(_baseline_sql())
+    op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+    op.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
+    for stmt in _split_statements(_baseline_sql()):
+        op.execute(stmt)
 
 
 def downgrade() -> None:

@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from src.shared.database import BaseModel
@@ -22,8 +22,8 @@ class Institution(BaseModel):
     domain = Column(String(255), unique=True, index=True)
     logo_url = Column(String(500), nullable=True)
     subscription_tier = Column(String(50), default="free")
-    max_users = Column(int, default=100)
-    max_groups = Column(int, default=500)
+    max_users = Column(Integer, default=100)
+    max_groups = Column(Integer, default=500)
 
     # Relationships
     users = relationship("User", back_populates="institution", cascade="all, delete-orphan")

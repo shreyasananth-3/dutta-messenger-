@@ -20,7 +20,7 @@ from src.shared.database import Base
 
 # Import every module's db_models here so Alembic autogenerate sees them.
 # New modules must add their import below.
-from src.modules.auth import db_models as _auth_models  # noqa: F401
+from src.modules.auth.models import db_models as _auth_models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:

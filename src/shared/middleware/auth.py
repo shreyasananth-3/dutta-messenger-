@@ -6,10 +6,11 @@ for use in protected route handlers.
 
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import structlog
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,7 +24,7 @@ security = HTTPBearer()
 
 
 async def get_current_user(
-    credentials: HTTPAuthCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Extract and validate JWT token, return current user.

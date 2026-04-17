@@ -4,6 +4,8 @@ Provides centralized Redis connection for caching, pub/sub,
 and distributed locks.
 """
 
+from typing import Any
+
 from redis.asyncio import Redis
 
 from src.config import settings

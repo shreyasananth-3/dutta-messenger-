@@ -3,6 +3,8 @@
 A private institutional messaging platform with Flutter frontend. Built with FastAPI, PostgreSQL, Redis, and MinIO.
 
 > **👋 Flutter / UI devs:** jump straight to [`docs/ui-contract/README.md`](docs/ui-contract/README.md) — single source of truth for what you can integrate against today, how to run the backend locally, the auth flow, the error envelope, rate limits, and the Postman collection.
+>
+> **🛠️ Setting up locally?** Follow [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md) — battle-tested recipe with every gotcha we actually hit (Python version, multi-statement migration issue, greenlet, pydantic strict mode). ~10 minutes on a clean Mac.
 
 ## Quick Start
 

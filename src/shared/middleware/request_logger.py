@@ -6,6 +6,7 @@ for observability and debugging.
 
 import time
 import uuid
+from typing import Any
 
 import structlog
 from fastapi import Request, Response

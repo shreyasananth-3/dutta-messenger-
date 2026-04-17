@@ -61,16 +61,7 @@ async def init_upload(
         mime_type=data.mime_type,
     )
     await db.commit()
-    response = jsonable_encoder(
-        success_response(
-            InitUploadResponse(
-                upload_id=uuid.UUID(media.id),
-                upload_url=upload_url,
-                storage_key=media.storage_key,
-                expires_in=expires_in,
-            )
-        )
-    )
+    response = _init_response(media, upload_url, expires_in)
     await idem.store(response, status=201)
     return response
 
@@ -169,6 +160,24 @@ async def delete_media(
 # ---------------------------------------------------------------------------
 # Internal helper — one MediaFile row → response Pydantic
 # ---------------------------------------------------------------------------
+
+
+def _init_response(media: Any, upload_url: str, expires_in: int) -> Any:
+    """Build the JSON-safe dict returned by `/media/upload/init`.
+
+    Separated so the route handler stays ≤ 15 body lines and so the
+    Idempotency-Key replay serialises exactly the same bytes we return.
+    """
+    return jsonable_encoder(
+        success_response(
+            InitUploadResponse(
+                upload_id=uuid.UUID(media.id),
+                upload_url=upload_url,
+                storage_key=media.storage_key,
+                expires_in=expires_in,
+            )
+        )
+    )
 
 
 def _media_to_response(media: Any) -> MediaFileResponse:

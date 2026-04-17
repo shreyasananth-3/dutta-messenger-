@@ -1,9 +1,20 @@
 .PHONY: help install install-dev up down logs lint format typecheck test test-fast test-unit test-integration test-e2e coverage mutation security-scan secrets-scan sbom migrate migrate-new migrate-down run seed openapi-export clean
 
-PYTHON ?= python3
-PIP ?= pip
-VENV ?= .venv
-ACTIVATE = . $(VENV)/bin/activate
+VENV       ?= .venv
+PYTHON     ?= $(VENV)/bin/python
+PIP        ?= $(VENV)/bin/pip
+PYTEST     ?= $(VENV)/bin/pytest
+RUFF       ?= $(VENV)/bin/ruff
+MYPY       ?= $(VENV)/bin/mypy
+ALEMBIC    ?= $(VENV)/bin/alembic
+UVICORN    ?= $(VENV)/bin/uvicorn
+COVERAGE   ?= $(VENV)/bin/coverage
+MUTMUT     ?= $(VENV)/bin/mutmut
+DETECT_SEC ?= $(VENV)/bin/detect-secrets
+PIP_AUDIT  ?= $(VENV)/bin/pip-audit
+CYCLONEDX  ?= $(VENV)/bin/cyclonedx-py
+PRECOMMIT  ?= $(VENV)/bin/pre-commit
+ACTIVATE    = . $(VENV)/bin/activate
 
 help:  ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -17,7 +28,7 @@ install:  ## Install runtime dependencies
 
 install-dev:  ## Install runtime + dev + test dependencies
 	$(PIP) install -e ".[dev,test]"
-	pre-commit install
+	$(PRECOMMIT) install
 
 up:  ## Start Postgres, Redis, MinIO via docker-compose
 	docker compose up -d
@@ -33,23 +44,23 @@ logs:  ## Tail docker service logs
 # ---------------------------------------------------------------------------
 
 lint:  ## Run ruff linter
-	ruff check src tests
+	$(RUFF) check src tests
 
 format:  ## Auto-format with ruff
-	ruff format src tests
-	ruff check --fix src tests
+	$(RUFF) format src tests
+	$(RUFF) check --fix src tests
 
 typecheck:  ## Run mypy strict type-checker
-	mypy src
+	$(MYPY) src
 
 secrets-scan:  ## Scan repo for committed secrets
-	detect-secrets scan --baseline .secrets.baseline
+	$(DETECT_SEC) scan --baseline .secrets.baseline
 
 security-scan:  ## Run pip-audit for vulnerable dependencies
-	pip-audit --strict
+	$(PIP_AUDIT) --strict
 
 sbom:  ## Generate CycloneDX SBOM
-	cyclonedx-py requirements -o sbom.xml
+	$(CYCLONEDX) requirements -o sbom.xml
 
 # ---------------------------------------------------------------------------
 # Testing
@@ -59,44 +70,44 @@ test:  ## Run the full test suite with coverage + timestamped results folder
 	./scripts/run_tests.sh
 
 test-fast:  ## Run only unit tests (no DB required)
-	pytest -m unit -n auto
+	$(PYTEST) -m unit -n auto
 
 test-unit:  ## Run unit tests
-	pytest -m unit
+	$(PYTEST) -m unit
 
 test-integration:  ## Run integration tests (requires DB + Redis)
-	pytest -m integration
+	$(PYTEST) -m integration
 
 test-e2e:  ## Run end-to-end tests
-	pytest -m e2e
+	$(PYTEST) -m e2e
 
 coverage:  ## Show coverage report
-	coverage report -m
+	$(COVERAGE) report -m
 	@echo "HTML report: tests/results/latest/coverage-html/index.html"
 
 mutation:  ## Run mutation testing on auth + shared modules
-	mutmut run --paths-to-mutate src/shared/,src/modules/auth/
-	mutmut results
+	$(MUTMUT) run --paths-to-mutate src/shared/,src/modules/auth/
+	$(MUTMUT) results
 
 # ---------------------------------------------------------------------------
 # Database migrations
 # ---------------------------------------------------------------------------
 
 migrate:  ## Apply all pending migrations
-	alembic upgrade head
+	$(ALEMBIC) upgrade head
 
 migrate-new:  ## Create a new migration (usage: make migrate-new MSG="description")
-	alembic revision --autogenerate -m "$(MSG)"
+	$(ALEMBIC) revision --autogenerate -m "$(MSG)"
 
 migrate-down:  ## Roll back one migration (use with care)
-	alembic downgrade -1
+	$(ALEMBIC) downgrade -1
 
 # ---------------------------------------------------------------------------
 # Application
 # ---------------------------------------------------------------------------
 
 run:  ## Run the FastAPI app locally
-	uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+	$(UVICORN) src.main:app --reload --host 0.0.0.0 --port 8000
 
 seed:  ## Seed the database with baseline data (admin, institution, group)
 	$(PYTHON) scripts/seed.py

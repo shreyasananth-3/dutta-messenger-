@@ -22,7 +22,9 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | 0 — Tooling, CI, test harness | ✅ done | `58cd5eb` |
 | 1 — Observability + security baseline | ✅ done | `7197905` |
 | UI contract (auth slice) | ✅ done | `07abfd4` |
-| 2 — Backfill tests for `shared/` + `auth` | ✅ done | |
+| 2 — Backfill tests for `shared/` + `auth` | ✅ done | `c669559` |
+| Chore: Makefile + run_tests.sh through venv | ✅ done | `c80828a`, `48062c3` |
+| Manual live-server smoke (auth) | ✅ done — recipe at [docs/MANUAL_SMOKE.md](MANUAL_SMOKE.md) | |
 | 3 — 7 mini-RFCs | ⏳ next | |
 | 4a — `users` module | ⏳ | |
 | 4b — `acl` module | ⏳ | |
@@ -31,10 +33,26 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | 4e — `media` module | ⏳ | |
 | 4f — `notifications` module | ⏳ | |
 | 5 — UI contract (all modules) | ⏳ | |
-| 6 — Load + E2E + seed | ⏳ | |
+| 6 — Load + **E2E (tests/e2e/)** + seed | ⏳ | |
 
 **Repo:** https://github.com/shreyasananth-3/dutta-messenger-.git
 **Branch:** `main` (trunk-based, every module lands behind an `ENABLE_*` feature flag that defaults OFF).
+
+---
+
+## Outstanding work — not on the main stage track
+
+Small items that aren't a full stage but shouldn't be lost:
+
+| Item | Status | Where |
+|------|--------|-------|
+| **Manual live-server smoke (auth slice)** | ✅ green — recipe + 3 gaps recorded | [docs/MANUAL_SMOKE.md](MANUAL_SMOKE.md) |
+| **Gap A — `audit_logs` not written on mutations** (surfaced by smoke) — infra exists, no routes call `audit.log(...)` | ⏳ fix during/after Stage 3 (taxonomy decided in tenant-isolation RFC) | [MANUAL_SMOKE.md § Gap A](MANUAL_SMOKE.md) |
+| **Gap B — inconsistent error envelope** (surfaced by smoke) — routes raising `HTTPException(detail=...)` bypass the standard `{error:{code,message,details}}` shape CLAUDE.md mandates | ⏳ quick cleanup (~4 call sites in auth routes) | [MANUAL_SMOKE.md § Gap B](MANUAL_SMOKE.md) |
+| **Gap C — refresh tokens not rotated** (surfaced by smoke) — old refresh token stays valid after `/auth/refresh`, no replay detection | ⏳ small service-layer fix + test | [MANUAL_SMOKE.md § Gap C](MANUAL_SMOKE.md) |
+| **E2E tests (`tests/e2e/`)** — full-journey pytest: register → invite → accept → create group → send message → read → react → push | ⏳ deferred to Stage 6 | `tests/e2e/` is empty on purpose; E2E needs all modules to exist first |
+| **72 pre-existing ruff findings** surfaced by `make lint` (S105 hardcoded-password warnings on `config.py` defaults, I001 import-sort across auth + shared) — was invisible before `c80828a` wired `make lint` to the venv | ⏳ backlog | fix with `make format` pass + review, or add targeted `# noqa` for intentional dev defaults |
+| **Push local commits to origin** — `c80828a`, `48062c3`, and this smoke-doc commit are unpushed | ⏳ after smoke lands | `git push origin main` |
 
 ---
 

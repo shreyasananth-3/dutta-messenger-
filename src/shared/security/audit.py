@@ -56,7 +56,10 @@ class AuditEvent(StrEnum):
     MESSAGE_DELETED = "message.deleted"
     MESSAGE_EDITED = "message.edited"
     MEDIA_UPLOADED = "media.uploaded"
-    NOTIFICATION_TOKEN_REGISTERED = "notification.token.registered"
+    NOTIFICATION_TOKEN_REGISTERED = "notification.token.registered"  # noqa: S105
+    NOTIFICATION_TOKEN_REVOKED = "notification.token.revoked"  # noqa: S105
+    NOTIFICATION_BATCH_SENT = "notification.batch.sent"
+    NOTIFICATION_BATCH_FAILED = "notification.batch.failed"
 
 
 @dataclass(frozen=True)

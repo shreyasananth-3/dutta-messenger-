@@ -58,6 +58,12 @@ CELERY_TASK_LATENCY = Histogram(
     buckets=(0.1, 0.5, 1.0, 5.0, 15.0, 60.0),
 )
 
+NOTIFICATIONS_DELIVERED = Counter(
+    "dutta_notifications_delivered_total",
+    "Push notifications delivered via FCM, labelled by FCM outcome.",
+    ["result"],
+)
+
 
 def register_metrics(app) -> None:  # type: ignore[no-untyped-def]
     """Attach prometheus-fastapi-instrumentator and expose `/metrics`."""

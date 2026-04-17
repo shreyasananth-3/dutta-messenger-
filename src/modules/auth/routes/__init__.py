@@ -1,0 +1,1 @@
+"""Routes for auth module."""

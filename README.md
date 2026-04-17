@@ -5,6 +5,8 @@ A private institutional messaging platform with Flutter frontend. Built with Fas
 > **👋 Flutter / UI devs:** jump straight to [`docs/ui-contract/README.md`](docs/ui-contract/README.md) — single source of truth for what you can integrate against today, how to run the backend locally, the auth flow, the error envelope, rate limits, and the Postman collection.
 >
 > **🛠️ Setting up locally?** Follow [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md) — battle-tested recipe with every gotcha we actually hit (Python version, multi-statement migration issue, greenlet, pydantic strict mode). ~10 minutes on a clean Mac.
+>
+> **🧪 Testing locally — load, multi-user, audit review?** [`docs/LOCAL_TESTING.md`](docs/LOCAL_TESTING.md) covers multiple users, k6 scripts, chat-reaction latency, and the 4-step audit-review recipe after every test run. Audit lives in the `audit_logs` Postgres table; logs go to `stdout` (pipe to `tee` to keep a file).
 
 ## Quick Start
 

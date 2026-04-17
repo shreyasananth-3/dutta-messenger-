@@ -3,6 +3,16 @@
 > **Paste this file's path (or its contents) into a fresh Claude Code session to resume work.**
 > Claude will also auto-load `CLAUDE.md` (pre-flight + post-flight rules) and `~/.claude/projects/.../memory/MEMORY.md` (user preferences).
 
+## The four docs any new session / engineer must read
+
+1. **This file** — current state, stage status, pick-up prompts.
+2. **`CLAUDE.md`** (repo root) — MANDATORY PRE-FLIGHT + POST-FLIGHT rules. Auto-loads in every session.
+3. **`docs/LOCAL_SETUP.md`** — battle-tested setup recipe + troubleshooting for every gotcha we actually hit.
+4. **`docs/LOCAL_TESTING.md`** — multi-user scenarios, load testing, chat reaction-time measurement, audit review recipe. **Read this before claiming a module is "ready"**.
+
+For plans and design: `/Users/guru/.claude/plans/now-go-through-the-twinkly-wombat.md` (the full plan).
+For contracts: `docs/ui-contract/` (Flutter team's source of truth).
+
 ---
 
 ## Where we are

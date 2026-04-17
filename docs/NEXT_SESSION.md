@@ -26,7 +26,8 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | Chore: Makefile + run_tests.sh through venv | ✅ done | `c80828a`, `48062c3` |
 | Manual live-server smoke (auth) | ✅ done — recipe at [docs/MANUAL_SMOKE.md](MANUAL_SMOKE.md) | |
 | 3 — 7 mini-RFCs | ✅ drafted + implementability-checked (4 drifts fixed) — see [docs/design/](design/) — **7 open questions below need human sign-off before Stage 4** | |
-| 4a — `users` module | ⏳ | |
+| Stage-0/1 gap fix: celery_app + storage + idempotency middleware | ✅ done | `d8714fc`, `512c0bd`, `3c1e7f5` |
+| 4a — `users` module (7 endpoints; 8th deferred to 4b) | ✅ done | `2a9b84d` |
 | 4b — `acl` module | ⏳ | |
 | 4c — `groups` module | ⏳ | |
 | 4d — `chat` module (incl. WebSocket) | ⏳ | |
@@ -142,6 +143,46 @@ design docs.
 
 If any of these fail in Stage 4, the fix is a **minor RFC amendment**, not
 a module rewrite. The Stage-3 decisions are still load-bearing.
+
+### Methodology amendment (added after the Stage-4a kickoff surfaced a miss)
+
+The Stage-3 implementability check only verified that functions the RFCs
+**NAMED** existed (e.g., `write_audit()`, `tenant_scoped_query()`). It did
+NOT verify that functions the RFCs **REQUIRED AS NEW INFRASTRUCTURE**
+actually existed. Worker B (Stage 4e, media) correctly flagged three
+missing primitives before starting:
+
+- `src/shared/celery_app.py` — listed in CLAUDE.md, never built.
+- `src/shared/storage.py` — listed in CLAUDE.md, never built.
+- `src/shared/middleware/idempotency.py` — required by idempotency.md,
+  never built.
+
+**New rule for every future RFC round:** when verifying implementability,
+grep the RFC for every "Files touched / created" table and confirm each
+entry either (a) already exists or (b) is a deliberate "to be built in
+Stage N" item with Stage N scheduled. If in doubt, attempt a dry-run
+import of each named symbol.
+
+This amendment has been applied retroactively to Stage 3's RFCs — the
+three primitives above shipped as commits `d8714fc`, `512c0bd`, `3c1e7f5`
+before Worker B (media) and Worker C (notifications) are unblocked.
+
+---
+
+## Stage 4 progress — Chain A
+
+| Module | Endpoints | Status | Notes |
+|--------|-----------|--------|-------|
+| `users` | 7 of 8 | ✅ merged `2a9b84d` | `PATCH /users/{id}/status` deferred to ACL (Stage 4b) — requires `institution.manage_users` permission which ACL owns |
+| `acl` | — | ⏳ next | Will wire up admin endpoint on `users` + own ACL endpoints |
+| `groups` | — | ⏳ | |
+| `chat` | — | ⏳ | |
+
+**Worker B (media) and Worker C (notifications) are now UNBLOCKED.**
+Pull main, verify `make test` green (349 tests), then run the worktree
+setup + build per their kickoff prompts. One correction to both prompts:
+the real import for `BaseModel` is `from src.shared.database import
+BaseModel`, not `from src.shared.models import BaseModel`.
 
 ---
 

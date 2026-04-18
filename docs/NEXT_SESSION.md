@@ -186,6 +186,125 @@ BaseModel`, not `from src.shared.models import BaseModel`.
 
 ---
 
+## Retrospective — why the worktree-parallel experiment didn't pay off
+
+Ran the plan's Option 3 (one lead + two worker Claude sessions in git
+worktrees). Result: worker B (media) and worker C (notifications) each
+opened a PR, but neither was mergeable. Root causes worth learning from:
+
+1. **Shared `.git/`, drifting HEAD.** Worktrees point at the same object
+   store, so when the lead committed locally (but before pushing),
+   worker branches that happened to be created after that point silently
+   picked up the lead's work. Worker B's PR ended up including ~2 000
+   lines of the lead's Stage-3 work + users module as "my diff". Worker
+   C's PR came from an older baseline and missed it entirely.
+2. **Missing shared primitives weren't discoverable ahead of time.**
+   Worker B correctly stopped when it found that
+   `src/shared/middleware/idempotency.py`, `src/shared/storage.py`, and
+   `src/shared/celery_app.py` didn't exist despite being in CLAUDE.md's
+   project structure. But the lead's Stage-3 implementability check only
+   verified function names the RFCs cited, not the "Files touched /
+   created" rows inside each RFC. The methodology has since been amended
+   (see "Methodology amendment" above). Workers blocked for a round.
+3. **Workers reinvented primitives anyway.** Worker C, not seeing the
+   shared `celery_app` on its older baseline, wrote its own inside
+   `src/modules/notifications/celery_app.py` (33 lines) — exactly the
+   duplication the worktree pattern was supposed to prevent.
+4. **Migration numbering collided.** Worker C's migration was numbered
+   `0004_notif_fanout_idx.py`, same revision number as the lead's
+   `0004_users_module_schema.py`. Alembic would pick one randomly on
+   `upgrade head`. Worker B got this right only by chance (they happened
+   to pick 0005 because their branch already contained 0004).
+5. **Net time.** ~4 hours of cross-session coordination produced two
+   unmergeable PRs. The serial path — lead building each module with full
+   context of the primitives and previous modules — would have taken
+   ~2 hours.
+
+**Going forward:** abandon the worktree-parallel pattern for this
+project. Stage 4b (`acl`), 4c (`groups`), 4d (`chat`), 4e (`media`),
+4f (`notifications`) will be built serially by a single lead session on
+`main`. Worker B and Worker C's PRs will be closed after extracting
+their actual new-only module code (see the fresh-session handoff
+below).
+
+---
+
+## Fresh-session handoff — what to do next
+
+The session that closed this chapter ran the following to leave main in a
+known-good state:
+
+- Pushed 10 commits containing the Stage-0/1 primitives
+  (`celery_app.py`, `storage.py`, `middleware/idempotency.py`), the
+  Stage-3 RFCs, the users module (Stage 4a), and the original chore/doc
+  commits.
+- Fixed CI: added `DATABASE_URL` to the test job (so `alembic upgrade
+  head` works), marked `typecheck` as `continue-on-error` until the
+  SQLAlchemy strict-mypy carryover is resolved, added missing-stubs
+  overrides for `boto3`/`botocore`/`celery`/unbuilt module imports in
+  `pyproject.toml`.
+- Closed Gap B (`docs/MANUAL_SMOKE.md`): replaced all seven bare
+  `HTTPException` sites in `src/modules/auth/routes/auth_routes.py`
+  with `InternalServerError` / `AppException` subclasses. Error
+  envelopes now match `docs/design/api-versioning.md` across every
+  auth path.
+- Ran `ruff --fix` + `ruff format` across the repo. Zero ruff findings
+  remain on `src tests`. 349 tests pass.
+
+### What the fresh session should do first
+
+1. `git pull origin main` — expect 3 new commits on top of the earlier
+   10: CI unblock, Gap B fix, and the lint sweep. **origin/main should
+   now be CI-green** (lint ✓, tests ✓, typecheck warn-only ✓,
+   security ✓). If it isn't, investigate before merging anything.
+2. Check in on the two open PRs:
+   - **PR #5 (`track/media`)** — was Worker B's attempt at Stage 4e.
+     Includes ~2 000 lines of lead-session duplicates + their actual
+     new work (`src/modules/media/*`, `migrations/0005_media_module_schema.py`,
+     `docs/design/threat-model-media.md`). Rather than ask Worker B to
+     rebase, extract just the new-only files onto `main` as a single
+     clean `feat(media): Stage 4e` commit. Wire the service to use
+     `src/shared/storage.py` and `src/shared/middleware/idempotency.py`
+     — no reinvention. Then close PR #5 with a comment crediting
+     Worker B and linking the landing commit.
+   - **PR #4 (`track/notifications`)** — was Worker C's attempt at
+     Stage 4f. Similar extraction, but with two additional surgeries:
+     (a) rename Worker C's migration from `0004_notif_fanout_idx.py`
+     to `0005_notifications_schema.py` with
+     `down_revision="0004_users_module_schema"`, (b) delete
+     `src/modules/notifications/celery_app.py` and import from
+     `src.shared.celery_app` instead, (c) wire the
+     `POST /api/v1/fcm-tokens` endpoint to
+     `require_idempotency("notifications.tokens")`. Then close PR #4
+     the same way.
+3. Dependabot PRs #1–#3 (GitHub-Actions version bumps) — these should
+   now have green CI runs triggered by the main push. Merge them one at
+   a time if CI is green. They're low-stakes.
+4. **Do NOT resume the worktree-parallel pattern.** Build 4b → 4c → 4d
+   serially here on `main`. `media` and `notifications` land as
+   extractions from the PRs, then Stage 5 (UI contract package) + Stage
+   6 (load/E2E) follow.
+
+### Files the fresh session should read first
+
+- `CLAUDE.md` (auto-loaded).
+- `docs/NEXT_SESSION.md` (this file).
+- `docs/design/rfc.template.md` + any of the 7 RFCs relevant to the next
+  module (e.g. `tenant-isolation.md` is mandatory for every module).
+- `reference-docs/modules/{name}/MODULE.md` for whichever module is next.
+- `src/modules/users/` as a complete working reference implementation
+  (schema + services + routes + tests + API.md + OpenAPI export).
+
+### Open questions that still need the human's sign-off
+
+Unchanged from earlier in this file. The 7 Stage-3 RFC decisions are
+still in `status: draft` until you answer the business-side
+questions (idempotency TTL, dm_auditor role, WS frame additions,
+retention minimums, error-envelope shape, DPDP timeline, SLO
+acceptance).
+
+---
+
 ## The two docs Claude must read before doing anything
 
 1. **`/Users/guru/.claude/plans/now-go-through-the-twinkly-wombat.md`** — the full plan (v3, architect-reviewed, right-sized for a 1,000–5,000 user school). Stages, parallelization strategy, cross-cutting standards, proof checklist.

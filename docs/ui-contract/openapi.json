@@ -226,6 +226,22 @@
         "title": "CreateTopicRequest",
         "type": "object"
       },
+      "EditMessageRequest": {
+        "description": "Body for `PATCH /api/v1/chat/messages/{id}`.",
+        "properties": {
+          "content": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "EditMessageRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -320,19 +336,31 @@
         "title": "LoginRequest",
         "type": "object"
       },
-      "MarkReadRequest": {
-        "description": "Client payload for `POST /api/v1/notifications/mark-read`.\n\nWhen `notification_ids` is empty, marks every unread notification for\nthe caller. An explicit list limits the mutation to those IDs.",
+      "OpenConversationRequest": {
+        "description": "Body for `POST /api/v1/chat/conversations/open-group` \u2014 ensures a\nconversation exists for the given group (simple mode) or topic.",
         "properties": {
-          "notification_ids": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 500,
-            "title": "Notification Ids",
-            "type": "array"
+          "group_id": {
+            "format": "uuid",
+            "title": "Group Id",
+            "type": "string"
+          },
+          "topic_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic Id"
           }
         },
-        "title": "MarkReadRequest",
+        "required": [
+          "group_id"
+        ],
+        "title": "OpenConversationRequest",
         "type": "object"
       },
       "RefreshTokenRequest": {
@@ -442,6 +470,34 @@
           "token"
         ],
         "title": "RegisterTokenRequest",
+        "type": "object"
+      },
+      "SendMessageRequest": {
+        "description": "Body for `POST /api/v1/chat/conversations/{id}/messages`.",
+        "properties": {
+          "content": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "reply_to_message_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reply To Message Id"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "SendMessageRequest",
         "type": "object"
       },
       "UpdateGroupRequest": {
@@ -647,6 +703,36 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "src__modules__chat__models__request_models__MarkReadRequest": {
+        "description": "Body for `POST /api/v1/chat/conversations/{id}/read`.",
+        "properties": {
+          "last_read_message_id": {
+            "format": "uuid",
+            "title": "Last Read Message Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "last_read_message_id"
+        ],
+        "title": "MarkReadRequest",
+        "type": "object"
+      },
+      "src__modules__notifications__models__request_models__MarkReadRequest": {
+        "description": "Client payload for `POST /api/v1/notifications/mark-read`.\n\nWhen `notification_ids` is empty, marks every unread notification for\nthe caller. An explicit list limits the mutation to those IDs.",
+        "properties": {
+          "notification_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Notification Ids",
+            "type": "array"
+          }
+        },
+        "title": "MarkReadRequest",
         "type": "object"
       }
     },
@@ -1089,6 +1175,356 @@
         "summary": "Register",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/chat/conversations/open-group": {
+      "post": {
+        "description": "Return (or create) the conversation for a group/topic pair.",
+        "operationId": "open_group_conversation_api_v1_chat_conversations_open_group_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Open Group Conversation Api V1 Chat Conversations Open Group Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Open Group Conversation",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/conversations/{conversation_id}/messages": {
+      "get": {
+        "description": "Cursor-paginated list of messages (newest-first).",
+        "operationId": "list_messages_api_v1_chat_conversations__conversation_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Messages Api V1 Chat Conversations  Conversation Id  Messages Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Messages",
+        "tags": [
+          "chat"
+        ]
+      },
+      "post": {
+        "description": "Send a message. REST fallback for the WebSocket path.",
+        "operationId": "send_message_api_v1_chat_conversations__conversation_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Send Message Api V1 Chat Conversations  Conversation Id  Messages Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Message",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/conversations/{conversation_id}/read": {
+      "post": {
+        "description": "Upsert the caller's read receipt up to `last_read_message_id`.",
+        "operationId": "mark_read_api_v1_chat_conversations__conversation_id__read_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/src__modules__chat__models__request_models__MarkReadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Mark Read Api V1 Chat Conversations  Conversation Id  Read Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Read",
+        "tags": [
+          "chat"
+        ]
+      }
+    },
+    "/api/v1/chat/messages/{message_id}": {
+      "delete": {
+        "description": "Soft-delete a message. Sender or group admin/owner only.",
+        "operationId": "delete_message_api_v1_chat_messages__message_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Message",
+        "tags": [
+          "chat"
+        ]
+      },
+      "patch": {
+        "description": "Edit own message.",
+        "operationId": "edit_message_api_v1_chat_messages__message_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edit Message Api V1 Chat Messages  Message Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit Message",
+        "tags": [
+          "chat"
         ]
       }
     },
@@ -1959,7 +2395,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MarkReadRequest"
+                "$ref": "#/components/schemas/src__modules__notifications__models__request_models__MarkReadRequest"
               }
             }
           },

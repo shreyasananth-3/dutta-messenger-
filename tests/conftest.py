@@ -64,6 +64,7 @@ for _flag in (
     "ENABLE_NOTIFICATIONS",
     "ENABLE_ACL",
     "ENABLE_GROUPS",
+    "ENABLE_CHAT",
 ):
     os.environ[_flag] = "true"
 

@@ -13,7 +13,7 @@ Operations exposed:
 
 All operations are async. Under the hood boto3 is synchronous; we run each
 blocking call inside FastAPI's `run_in_threadpool` so the event loop stays
-responsive. At the 1–5k-user scale described in the plan this is plenty
+responsive. At the 1-5k-user scale described in the plan this is plenty
 fast (blob ops happen off the request hot path anyway — clients POST to
 presigned URLs directly, not through our app).
 
@@ -28,7 +28,7 @@ only in integration tests for the media module (Stage 4e).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import boto3
 import structlog
@@ -134,11 +134,12 @@ async def presigned_put_url(
         params["ContentLength"] = content_length_max
 
     def _sign() -> str:
-        return get_storage_client().generate_presigned_url(
+        url = get_storage_client().generate_presigned_url(
             ClientMethod="put_object",
             Params=params,
             ExpiresIn=expires_in,
         )
+        return cast(str, url)
 
     return await run_in_threadpool(_sign)
 
@@ -159,11 +160,12 @@ async def presigned_get_url(
         params["ResponseContentDisposition"] = response_content_disposition
 
     def _sign() -> str:
-        return get_storage_client().generate_presigned_url(
+        url = get_storage_client().generate_presigned_url(
             ClientMethod="get_object",
             Params=params,
             ExpiresIn=expires_in,
         )
+        return cast(str, url)
 
     return await run_in_threadpool(_sign)
 
@@ -184,7 +186,8 @@ async def head_object(
 
     def _head() -> dict[str, Any] | None:
         try:
-            return get_storage_client().head_object(Bucket=target_bucket, Key=key)
+            result = get_storage_client().head_object(Bucket=target_bucket, Key=key)
+            return cast("dict[str, Any]", result)
         except ClientError as exc:
             # 404 on a HEAD is expected for pending uploads.
             err_code = exc.response.get("Error", {}).get("Code")
@@ -230,13 +233,13 @@ async def delete_object(
 
 
 __all__ = [
-    "get_storage_client",
-    "set_storage_client",
-    "reset_storage_client",
+    "delete_object",
     "get_bucket",
-    "presigned_put_url",
-    "presigned_get_url",
+    "get_storage_client",
     "head_object",
     "object_exists",
-    "delete_object",
+    "presigned_get_url",
+    "presigned_put_url",
+    "reset_storage_client",
+    "set_storage_client",
 ]

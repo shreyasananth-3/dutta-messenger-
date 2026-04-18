@@ -45,14 +45,14 @@ import json
 import re
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 import structlog
 from fastapi import Depends, Header, Request
 from redis.asyncio import Redis
 
-from src.shared.exceptions import AppException, ConflictError, ValidationError
+from src.shared.exceptions import AppException, ConflictError
 from src.shared.middleware.auth import get_current_user
 from src.shared.redis import get_redis
 
@@ -142,7 +142,7 @@ async def check_idempotency(
     """
     try:
         raw = await redis.get(key)
-    except Exception as exc:  # noqa: BLE001 — we must catch any redis error
+    except Exception as exc:
         logger.error("idempotency_redis_unavailable", error=str(exc), key=key)
         from src.shared.observability.metrics import IDEMPOTENCY_REDIS_DOWN
 
@@ -195,11 +195,11 @@ async def store_idempotency(
         "headers": headers or {"Content-Type": "application/json"},
         "body": base64.b64encode(response_body).decode("ascii"),
         "payload_hash": payload_digest,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
     try:
         await redis.set(key, json.dumps(entry), ex=ttl_seconds)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("idempotency_store_failed", error=str(exc), key=key)
         from src.shared.observability.metrics import IDEMPOTENCY_STORE_FAILED
 
@@ -298,7 +298,8 @@ def _serialise_response(response: Any) -> bytes:
     """Normalise whatever the handler returned to raw JSON bytes."""
     # Pydantic v2 BaseModel
     if hasattr(response, "model_dump_json"):
-        return response.model_dump_json().encode("utf-8")
+        serialised: str = response.model_dump_json()
+        return serialised.encode("utf-8")
     if isinstance(response, bytes):
         return response
     if isinstance(response, str):
@@ -356,7 +357,7 @@ def require_idempotency(
     endpoint_fingerprint: str,
     *,
     required: bool = True,
-):
+) -> Any:
     """Dependency factory — returns a FastAPI `Depends()`-compatible callable.
 
     Args:
@@ -423,16 +424,16 @@ class _NoopIdempotencyCheck(IdempotencyCheck):
 __all__ = [
     "DEFAULT_TTL_SECONDS",
     "HEADER_NAME",
+    "IdempotencyCheck",
+    "IdempotencyCollision",
+    "IdempotencyKeyInvalid",
+    "IdempotencyKeyMissing",
+    "IdempotencyResult",
     "Outcome",
     "StoredIdempotencyEntry",
-    "IdempotencyResult",
-    "IdempotencyCheck",
-    "IdempotencyKeyMissing",
-    "IdempotencyKeyInvalid",
-    "IdempotencyCollision",
     "build_key",
-    "payload_hash",
     "check_idempotency",
-    "store_idempotency",
+    "payload_hash",
     "require_idempotency",
+    "store_idempotency",
 ]

@@ -7,21 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
-from src.shared.database import get_db
-from src.shared.exceptions import AppException
-from src.shared.middleware.auth import get_current_user
-from src.shared.responses import success_response
 from src.modules.auth.models.request_models import (
-    CreateInstitutionRequest,
-    LoginRequest,
-    RegisterRequest,
-    RefreshTokenRequest,
-    InviteUserRequest,
-    AcceptInvitationRequest,
     ChangePasswordRequest,
+    CreateInstitutionRequest,
+    InviteUserRequest,
+    LoginRequest,
+    RefreshTokenRequest,
+    RegisterRequest,
 )
 from src.modules.auth.models.response_models import (
-    AcceptInvitationResponse,
     InstitutionResponse,
     InvitationResponse,
     InviteUserResponse,
@@ -31,6 +25,10 @@ from src.modules.auth.models.response_models import (
     UserResponse,
 )
 from src.modules.auth.services.auth_service import AuthService
+from src.shared.database import get_db
+from src.shared.exceptions import AppException, InternalServerError
+from src.shared.middleware.auth import get_current_user
+from src.shared.responses import success_response
 
 logger = structlog.get_logger()
 router = APIRouter(tags=["auth"])
@@ -70,17 +68,14 @@ async def create_institution(
         return success_response(InstitutionResponse.from_orm(institution))
     except AppException as e:
         await db.rollback()
-        raise e.to_http_exception()
+        raise e.to_http_exception() from e
     except HTTPException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
         logger.error("create_institution_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create institution",
-        )
+        raise InternalServerError(message="Failed to create institution") from e
 
 
 @router.post(
@@ -113,29 +108,29 @@ async def register(
                 full_name=data.full_name,
             )
             await db.commit()
-            return success_response(RegistrationResponse(
-                user=UserResponse.from_orm(user),
-                message="Account created successfully from invitation",
-            ))
+            return success_response(
+                RegistrationResponse(
+                    user=UserResponse.from_orm(user),
+                    message="Account created successfully from invitation",
+                )
+            )
 
         # Otherwise, direct registration (if institution allows)
-        raise HTTPException(
+        raise AppException(
+            error_code="AUTH_DIRECT_REGISTRATION_DISABLED",
+            message="Direct registration not allowed. Please use invitation link.",
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Direct registration not allowed. Please use invitation link.",
         )
     except AppException as e:
         await db.rollback()
-        raise e.to_http_exception()
+        raise e.to_http_exception() from e
     except HTTPException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
         logger.error("register_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Registration failed",
-        )
+        raise InternalServerError(message="Registration failed") from e
 
 
 @router.post(
@@ -164,25 +159,24 @@ async def login(
         )
         await db.commit()
 
-        return success_response(LoginResponse(
-            user=UserResponse.from_orm(user),
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        ))
+        return success_response(
+            LoginResponse(
+                user=UserResponse.from_orm(user),
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
+        )
     except AppException as e:
         await db.rollback()
-        raise e.to_http_exception()
+        raise e.to_http_exception() from e
     except HTTPException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
         logger.error("login_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Login failed",
-        )
+        raise InternalServerError(message="Login failed") from e
 
 
 @router.post(
@@ -212,24 +206,23 @@ async def refresh_token(
         )
         await db.commit()
 
-        return success_response(RefreshTokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        ))
+        return success_response(
+            RefreshTokenResponse(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_in_seconds=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
+        )
     except AppException as e:
         await db.rollback()
-        raise e.to_http_exception()
+        raise e.to_http_exception() from e
     except HTTPException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
         logger.error("refresh_token_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Token refresh failed",
-        )
+        raise InternalServerError(message="Token refresh failed") from e
 
 
 @router.post(
@@ -261,23 +254,22 @@ async def invite_user(
         )
         await db.commit()
 
-        return success_response(InviteUserResponse(
-            invitation=InvitationResponse.from_orm(invitation),
-            message=f"Invitation sent to {data.email}",
-        ))
+        return success_response(
+            InviteUserResponse(
+                invitation=InvitationResponse.from_orm(invitation),
+                message=f"Invitation sent to {data.email}",
+            )
+        )
     except AppException as e:
         await db.rollback()
-        raise e.to_http_exception()
+        raise e.to_http_exception() from e
     except HTTPException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
         logger.error("invite_user_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send invitation",
-        )
+        raise InternalServerError(message="Failed to send invitation") from e
 
 
 @router.post(
@@ -311,14 +303,11 @@ async def change_password(
         return success_response(UserResponse.from_orm(user))
     except AppException as e:
         await db.rollback()
-        raise e.to_http_exception()
+        raise e.to_http_exception() from e
     except HTTPException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
         logger.error("change_password_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to change password",
-        )
+        raise InternalServerError(message="Failed to change password") from e

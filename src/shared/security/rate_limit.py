@@ -28,9 +28,7 @@ def _key(request: Request) -> str:
 limiter = Limiter(key_func=_key, headers_enabled=True, default_limits=["300/minute"])
 
 
-async def limiter_exception_handler(
-    request: Request, exc: RateLimitExceeded
-) -> JSONResponse:
+async def limiter_exception_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     """Custom handler so the error envelope matches API_STANDARDS.md."""
     RATE_LIMITED_REQUESTS.labels(rule=str(exc.detail)).inc()
     return JSONResponse(

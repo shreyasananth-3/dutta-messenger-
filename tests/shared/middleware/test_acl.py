@@ -28,7 +28,6 @@ from src.shared.middleware.acl import (
     require_role,
 )
 
-
 # ---------------------------------------------------------------------------
 # Stub `src.modules.acl.models.db_models` and groups equivalent so the
 # deferred imports inside the acl helpers resolve without the real modules.
@@ -52,9 +51,7 @@ class _StubPermission(_AclBase):
 class _StubRolePermission(_AclBase):
     __tablename__ = "_acl_test_role_permissions"
     role_id = Column(String, ForeignKey("_acl_test_roles.id"), primary_key=True)
-    permission_id = Column(
-        String, ForeignKey("_acl_test_permissions.id"), primary_key=True
-    )
+    permission_id = Column(String, ForeignKey("_acl_test_permissions.id"), primary_key=True)
 
 
 class _StubUserRole(_AclBase):
@@ -113,36 +110,24 @@ class TestRequirePermissionDecorator:
             await handler()
 
     @pytest.mark.asyncio
-    async def test_user_with_permission_passes_through(
-        self, acl_tables: AsyncSession
-    ) -> None:
+    async def test_user_with_permission_passes_through(self, acl_tables: AsyncSession) -> None:
         uid, inst, role_id, perm_id = (str(uuid.uuid4()) for _ in range(4))
         await acl_tables.execute(
             text(
-                "INSERT INTO _acl_test_roles (id, institution_id, name) "
-                "VALUES (:i, :inst, 'admin')"
+                "INSERT INTO _acl_test_roles (id, institution_id, name) VALUES (:i, :inst, 'admin')"
             ),
             {"i": role_id, "inst": inst},
         )
         await acl_tables.execute(
-            text(
-                "INSERT INTO _acl_test_permissions (id, code) "
-                "VALUES (:i, 'CREATE_GROUP')"
-            ),
+            text("INSERT INTO _acl_test_permissions (id, code) VALUES (:i, 'CREATE_GROUP')"),
             {"i": perm_id},
         )
         await acl_tables.execute(
-            text(
-                "INSERT INTO _acl_test_role_permissions (role_id, permission_id) "
-                "VALUES (:r, :p)"
-            ),
+            text("INSERT INTO _acl_test_role_permissions (role_id, permission_id) VALUES (:r, :p)"),
             {"r": role_id, "p": perm_id},
         )
         await acl_tables.execute(
-            text(
-                "INSERT INTO _acl_test_user_roles (user_id, role_id) "
-                "VALUES (:u, :r)"
-            ),
+            text("INSERT INTO _acl_test_user_roles (user_id, role_id) VALUES (:u, :r)"),
             {"u": uid, "r": role_id},
         )
 
@@ -157,9 +142,7 @@ class TestRequirePermissionDecorator:
         assert result == "ok"
 
     @pytest.mark.asyncio
-    async def test_user_without_permission_denied(
-        self, acl_tables: AsyncSession
-    ) -> None:
+    async def test_user_without_permission_denied(self, acl_tables: AsyncSession) -> None:
         @require_permission("DELETE_USER")
         async def handler(**kwargs: object) -> str:
             return "ok"
@@ -185,22 +168,16 @@ class TestRequireRoleDecorator:
             await handler()
 
     @pytest.mark.asyncio
-    async def test_user_with_role_passes_through(
-        self, acl_tables: AsyncSession
-    ) -> None:
+    async def test_user_with_role_passes_through(self, acl_tables: AsyncSession) -> None:
         uid, inst, role_id = (str(uuid.uuid4()) for _ in range(3))
         await acl_tables.execute(
             text(
-                "INSERT INTO _acl_test_roles (id, institution_id, name) "
-                "VALUES (:i, :inst, 'admin')"
+                "INSERT INTO _acl_test_roles (id, institution_id, name) VALUES (:i, :inst, 'admin')"
             ),
             {"i": role_id, "inst": inst},
         )
         await acl_tables.execute(
-            text(
-                "INSERT INTO _acl_test_user_roles (user_id, role_id) "
-                "VALUES (:u, :r)"
-            ),
+            text("INSERT INTO _acl_test_user_roles (user_id, role_id) VALUES (:u, :r)"),
             {"u": uid, "r": role_id},
         )
 
@@ -215,9 +192,7 @@ class TestRequireRoleDecorator:
         assert result == "ok"
 
     @pytest.mark.asyncio
-    async def test_user_without_role_denied(
-        self, acl_tables: AsyncSession
-    ) -> None:
+    async def test_user_without_role_denied(self, acl_tables: AsyncSession) -> None:
         @require_role("admin")
         async def handler(**kwargs: object) -> str:
             return "ok"
@@ -234,22 +209,15 @@ class TestRequireRoleDecorator:
 
 class TestCheckGroupMembership:
     @pytest.mark.asyncio
-    async def test_missing_membership_returns_false(
-        self, acl_tables: AsyncSession
-    ) -> None:
+    async def test_missing_membership_returns_false(self, acl_tables: AsyncSession) -> None:
         ok = await check_group_membership(uuid.uuid4(), uuid.uuid4(), acl_tables)
         assert ok is False
 
     @pytest.mark.asyncio
-    async def test_existing_membership_returns_true(
-        self, acl_tables: AsyncSession
-    ) -> None:
+    async def test_existing_membership_returns_true(self, acl_tables: AsyncSession) -> None:
         uid, gid = uuid.uuid4(), uuid.uuid4()
         await acl_tables.execute(
-            text(
-                "INSERT INTO _acl_test_group_members (user_id, group_id) "
-                "VALUES (:u, :g)"
-            ),
+            text("INSERT INTO _acl_test_group_members (user_id, group_id) VALUES (:u, :g)"),
             {"u": str(uid), "g": str(gid)},
         )
         assert await check_group_membership(uid, gid, acl_tables) is True
@@ -257,17 +225,11 @@ class TestCheckGroupMembership:
 
 class TestCheckHelpersDirect:
     @pytest.mark.asyncio
-    async def test_check_user_permission_false_when_unset(
-        self, acl_tables: AsyncSession
-    ) -> None:
-        ok = await check_user_permission(
-            uuid.uuid4(), uuid.uuid4(), "ANYTHING", acl_tables
-        )
+    async def test_check_user_permission_false_when_unset(self, acl_tables: AsyncSession) -> None:
+        ok = await check_user_permission(uuid.uuid4(), uuid.uuid4(), "ANYTHING", acl_tables)
         assert ok is False
 
     @pytest.mark.asyncio
-    async def test_check_user_role_false_when_unset(
-        self, acl_tables: AsyncSession
-    ) -> None:
+    async def test_check_user_role_false_when_unset(self, acl_tables: AsyncSession) -> None:
         ok = await check_user_role(uuid.uuid4(), uuid.uuid4(), "admin", acl_tables)
         assert ok is False

@@ -29,14 +29,12 @@ from src.shared.middleware.idempotency import (
     DEFAULT_TTL_SECONDS,
     HEADER_NAME,
     IdempotencyCheck,
-    IdempotencyResult,
     StoredIdempotencyEntry,
     build_key,
     check_idempotency,
     payload_hash,
     store_idempotency,
 )
-
 
 # ---------------------------------------------------------------------------
 # Key + hash helpers
@@ -160,9 +158,7 @@ class TestStoreIdempotency:
     @pytest.mark.asyncio
     async def test_custom_ttl(self) -> None:
         redis = _fake_redis()
-        await store_idempotency(
-            redis, "k", "h", status=200, response_body=b"x", ttl_seconds=60
-        )
+        await store_idempotency(redis, "k", "h", status=200, response_body=b"x", ttl_seconds=60)
         assert redis.set.call_args.kwargs["ex"] == 60
 
     @pytest.mark.asyncio
@@ -170,9 +166,7 @@ class TestStoreIdempotency:
         redis = MagicMock()
         redis.set = AsyncMock(side_effect=ConnectionError("redis gone"))
         # Must NOT raise — the user's mutation already succeeded.
-        await store_idempotency(
-            redis, "k", "h", status=200, response_body=b"x"
-        )
+        await store_idempotency(redis, "k", "h", status=200, response_body=b"x")
 
 
 # ---------------------------------------------------------------------------
@@ -343,9 +337,7 @@ class TestRequireIdempotencyDependency:
         request = MagicMock()
         request.body = AsyncMock(return_value=b"{}")
         user = {"user_id": uuid.uuid4(), "institution_id": uuid.uuid4()}
-        check = await dep(
-            request=request, current_user=user, idempotency_key=None
-        )
+        check = await dep(request=request, current_user=user, idempotency_key=None)
         assert check.is_hit is False
         # store() is a no-op — should not touch anything
         await check.store({"a": 1})
@@ -362,9 +354,7 @@ class TestRequireIdempotencyDependency:
         request.body = AsyncMock(return_value=b"{}")
         user = {"user_id": uuid.uuid4(), "institution_id": uuid.uuid4()}
         with pytest.raises(IdempotencyKeyInvalid):
-            await dep(
-                request=request, current_user=user, idempotency_key="not-a-uuid"
-            )
+            await dep(request=request, current_user=user, idempotency_key="not-a-uuid")
 
     @pytest.mark.asyncio
     async def test_non_uuid4_shape_raises_400(self) -> None:
@@ -387,9 +377,7 @@ class TestRequireIdempotencyDependency:
             )
 
     @pytest.mark.asyncio
-    async def test_collision_raises_409(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_collision_raises_409(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from src.shared.middleware.idempotency import (
             IdempotencyCollision,
             require_idempotency,
@@ -423,9 +411,7 @@ class TestRequireIdempotencyDependency:
             )
 
     @pytest.mark.asyncio
-    async def test_miss_returns_live_check(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_miss_returns_live_check(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from src.shared.middleware.idempotency import require_idempotency
 
         dep = require_idempotency("chat.messages")
@@ -441,8 +427,6 @@ class TestRequireIdempotencyDependency:
 
         monkeypatch.setattr(idem_mod, "get_redis", _get_redis)
 
-        check = await dep(
-            request=request, current_user=user, idempotency_key=client_key
-        )
+        check = await dep(request=request, current_user=user, idempotency_key=client_key)
         assert check.is_hit is False
         assert check.outcome == "miss"

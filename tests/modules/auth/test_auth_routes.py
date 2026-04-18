@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import uuid
-from datetime import timedelta
 
 import pytest
 import pytest_asyncio
@@ -30,9 +29,7 @@ async def institution(db_session: AsyncSession) -> Institution:
 
 
 @pytest_asyncio.fixture
-async def registered_user(
-    db_session: AsyncSession, institution: Institution
-) -> User:
+async def registered_user(db_session: AsyncSession, institution: Institution) -> User:
     user = await AuthService.register_user(
         db_session,
         institution_id=institution.id,
@@ -60,12 +57,8 @@ class TestCreateInstitutionRoute:
         assert body["data"]["name"].startswith("NewSchool-")
 
     @pytest.mark.asyncio
-    async def test_duplicate_name_409(
-        self, client: AsyncClient, institution: Institution
-    ) -> None:
-        r = await client.post(
-            f"{API}/institutions", json={"name": institution.name}
-        )
+    async def test_duplicate_name_409(self, client: AsyncClient, institution: Institution) -> None:
+        r = await client.post(f"{API}/institutions", json={"name": institution.name})
         assert r.status_code == 409
         assert r.json()["detail"]["error"]["code"] == "CONFLICT"
 
@@ -76,9 +69,7 @@ class TestCreateInstitutionRoute:
 
     @pytest.mark.asyncio
     async def test_max_users_out_of_range_422(self, client: AsyncClient) -> None:
-        r = await client.post(
-            f"{API}/institutions", json={"name": "X", "max_users": 9}
-        )
+        r = await client.post(f"{API}/institutions", json={"name": "X", "max_users": 9})
         assert r.status_code == 422
 
 
@@ -144,9 +135,7 @@ class TestRegisterRoute:
 
 class TestLoginRoute:
     @pytest.mark.asyncio
-    async def test_happy_path(
-        self, client: AsyncClient, registered_user: User
-    ) -> None:
+    async def test_happy_path(self, client: AsyncClient, registered_user: User) -> None:
         r = await client.post(
             f"{API}/auth/login",
             json={"email": registered_user.email, "password": VALID_PASSWORD},
@@ -159,9 +148,7 @@ class TestLoginRoute:
         assert body["data"]["expires_in_seconds"] > 0
 
     @pytest.mark.asyncio
-    async def test_wrong_password_401(
-        self, client: AsyncClient, registered_user: User
-    ) -> None:
+    async def test_wrong_password_401(self, client: AsyncClient, registered_user: User) -> None:
         r = await client.post(
             f"{API}/auth/login",
             json={"email": registered_user.email, "password": "Wrong1Pass!"},
@@ -201,9 +188,7 @@ class TestLoginRoute:
 class TestRefreshRoute:
     @pytest.mark.asyncio
     async def test_no_auth_header_403(self, client: AsyncClient) -> None:
-        r = await client.post(
-            f"{API}/auth/refresh", json={"refresh_token": "anything"}
-        )
+        r = await client.post(f"{API}/auth/refresh", json={"refresh_token": "anything"})
         # HTTPBearer auto-error returns 401 or 403 depending on FastAPI version
         assert r.status_code in (401, 403)
 
@@ -225,9 +210,7 @@ class TestRefreshRoute:
         assert body["data"]["access_token"].count(".") == 2
 
     @pytest.mark.asyncio
-    async def test_user_not_in_db_404(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_user_not_in_db_404(self, client: AsyncClient) -> None:
         # Token for a user that doesn't exist in DB → service raises NotFoundError
         token = create_access_token(uuid.uuid4(), uuid.uuid4())
         r = await client.post(
@@ -244,9 +227,7 @@ class TestRefreshRoute:
 class TestInviteRoute:
     @pytest.mark.asyncio
     async def test_no_auth_403(self, client: AsyncClient) -> None:
-        r = await client.post(
-            f"{API}/auth/invite", json={"email": "x@school.test"}
-        )
+        r = await client.post(f"{API}/auth/invite", json={"email": "x@school.test"})
         # HTTPBearer auto-error returns 401 or 403 depending on FastAPI version
         assert r.status_code in (401, 403)
 

@@ -4,7 +4,7 @@ Provides helpers for working with timezone-aware datetimes
 and timestamp formatting.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 
@@ -21,7 +21,7 @@ def get_utc_now() -> datetime:
         now = get_utc_now()
         # Returns: datetime.datetime(2024, 1, 15, 10, 30, 45, tzinfo=datetime.timezone.utc)
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def get_timestamp() -> str:

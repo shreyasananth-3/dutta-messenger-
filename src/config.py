@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "info"
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger"
+    )
     TEST_DATABASE_URL: str = (
         "postgresql+asyncpg://messenger:messenger_pass@localhost:5432/dutta_messenger_test"
     )
@@ -28,7 +30,7 @@ class Settings(BaseSettings):
     REDIS_POOL_SIZE: int = 10
 
     # JWT
-    SECRET_KEY: str = "change-me-in-production"
+    SECRET_KEY: str = "change-me-in-production"  # noqa: S105 - intentional dev default; prod overrides via env
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -43,7 +45,7 @@ class Settings(BaseSettings):
     STORAGE_TYPE: str = "minio"  # "minio" or "s3"
     MINIO_URL: str = "http://localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"  # noqa: S105 - MinIO default cred; prod uses AWS IAM
     MINIO_BUCKET: str = "dutta-messenger"
     AWS_S3_BUCKET: str = "dutta-messenger-prod"
     AWS_REGION: str = "us-east-1"

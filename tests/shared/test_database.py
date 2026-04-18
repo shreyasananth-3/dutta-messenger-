@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 from sqlalchemy import Column, Integer, String, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +17,6 @@ from src.shared.database import (
     init_db,
     model_to_dict,
 )
-
 
 # --- model utilities ---------------------------------------------------------
 

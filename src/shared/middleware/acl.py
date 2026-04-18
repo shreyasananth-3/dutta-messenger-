@@ -5,16 +5,14 @@ and permission checking.
 """
 
 import uuid
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 import structlog
-from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from src.shared.database import get_db
 from src.shared.exceptions import PermissionDeniedError
 
 logger = structlog.get_logger()
@@ -136,11 +134,12 @@ async def check_user_permission(
     Returns:
         True if user has permission, False otherwise.
     """
-    from src.modules.acl.models.db_models import UserRole, Role, RolePermission, Permission
+    from src.modules.acl.models.db_models import Permission, Role, RolePermission, UserRole
 
     # Query: user -> roles -> permissions
     result = await db.execute(
-        select(Permission).join(
+        select(Permission)
+        .join(
             RolePermission,
             RolePermission.permission_id == Permission.id,
         )
@@ -179,10 +178,11 @@ async def check_user_role(
     Returns:
         True if user has role, False otherwise.
     """
-    from src.modules.acl.models.db_models import UserRole, Role
+    from src.modules.acl.models.db_models import Role, UserRole
 
     result = await db.execute(
-        select(Role).join(
+        select(Role)
+        .join(
             UserRole,
             UserRole.role_id == Role.id,
         )

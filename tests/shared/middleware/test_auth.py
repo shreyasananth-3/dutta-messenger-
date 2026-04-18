@@ -25,21 +25,15 @@ class TestCreateAccessToken:
         uid = uuid.uuid4()
         inst = uuid.uuid4()
         token = create_access_token(uid, inst)
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         assert payload["sub"] == str(uid)
         assert payload["inst"] == str(inst)
         assert "exp" in payload
         assert "iat" in payload
 
     def test_explicit_expires_delta_respected(self) -> None:
-        token = create_access_token(
-            uuid.uuid4(), uuid.uuid4(), expires_delta=timedelta(seconds=1)
-        )
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        token = create_access_token(uuid.uuid4(), uuid.uuid4(), expires_delta=timedelta(seconds=1))
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         # exp - iat ≈ 1 second
         assert payload["exp"] - payload["iat"] == 1
 
@@ -47,9 +41,7 @@ class TestCreateAccessToken:
 class TestCreateRefreshToken:
     def test_carries_type_claim(self) -> None:
         token = create_refresh_token(uuid.uuid4(), uuid.uuid4())
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         assert payload["type"] == "refresh"
 
 
@@ -72,9 +64,7 @@ class TestGetCurrentUserDirect:
 
     @pytest.mark.asyncio
     async def test_token_missing_claims_raises(self) -> None:
-        token = jwt.encode(
-            {"foo": "bar"}, settings.SECRET_KEY, algorithm=settings.ALGORITHM
-        )
+        token = jwt.encode({"foo": "bar"}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         with pytest.raises(AuthenticationError, match="missing required claims"):
             await get_current_user(credentials=creds, db=None)  # type: ignore[arg-type]
@@ -92,9 +82,7 @@ class TestGetCurrentUserOverHttp:
         uid = uuid.uuid4()
         inst = uuid.uuid4()
         token = create_access_token(uid, inst)
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://t"
-        ) as c:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
             ok = await c.get("/me", headers={"Authorization": f"Bearer {token}"})
             assert ok.status_code == 200
             assert ok.json() == {"user_id": str(uid), "inst": str(inst)}

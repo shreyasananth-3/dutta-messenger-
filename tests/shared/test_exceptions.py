@@ -35,9 +35,7 @@ class TestAppException:
         http = exc.to_http_exception()
         assert isinstance(http, HTTPException)
         assert http.status_code == 418
-        assert http.detail == {
-            "error": {"code": "X", "message": "bad", "details": {"a": 1}}
-        }
+        assert http.detail == {"error": {"code": "X", "message": "bad", "details": {"a": 1}}}
 
 
 class TestNotFoundError:
@@ -85,9 +83,7 @@ class TestConflictError:
         assert exc.details == {}
 
     def test_with_resource(self) -> None:
-        assert ConflictError("dup", resource_type="user").details == {
-            "resource_type": "user"
-        }
+        assert ConflictError("dup", resource_type="user").details == {"resource_type": "user"}
 
 
 class TestRateLimitError:

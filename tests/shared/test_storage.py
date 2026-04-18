@@ -49,7 +49,7 @@ class TestClientConstruction:
         monkeypatch.setattr(settings, "STORAGE_TYPE", "minio")
         monkeypatch.setattr(settings, "MINIO_URL", "http://localhost:9000")
         monkeypatch.setattr(settings, "MINIO_ACCESS_KEY", "testkey")
-        monkeypatch.setattr(settings, "MINIO_SECRET_KEY", "testsecret")  # noqa: S105
+        monkeypatch.setattr(settings, "MINIO_SECRET_KEY", "testsecret")
 
         seen_kwargs: dict[str, Any] = {}
 
@@ -121,7 +121,7 @@ class TestPresignedPut:
             content_length_max=5_000_000,
         )
         assert url == "https://signed.example/put"
-        args, kwargs = mock_client.generate_presigned_url.call_args
+        kwargs = mock_client.generate_presigned_url.call_args.kwargs
         assert kwargs["ClientMethod"] == "put_object"
         assert kwargs["Params"]["Key"] == "media/abc/original.jpg"
         assert kwargs["Params"]["ContentType"] == "image/jpeg"
@@ -129,22 +129,16 @@ class TestPresignedPut:
         assert kwargs["ExpiresIn"] == 3600  # default
 
     @pytest.mark.asyncio
-    async def test_no_content_length_when_not_passed(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_no_content_length_when_not_passed(self, mock_client: MagicMock) -> None:
         mock_client.generate_presigned_url.return_value = "https://x"
-        await storage_module.presigned_put_url(
-            "k", content_type="image/png"
-        )
+        await storage_module.presigned_put_url("k", content_type="image/png")
         kwargs = mock_client.generate_presigned_url.call_args.kwargs
         assert "ContentLength" not in kwargs["Params"]
 
     @pytest.mark.asyncio
     async def test_custom_expiry(self, mock_client: MagicMock) -> None:
         mock_client.generate_presigned_url.return_value = "https://x"
-        await storage_module.presigned_put_url(
-            "k", content_type="image/png", expires_in=120
-        )
+        await storage_module.presigned_put_url("k", content_type="image/png", expires_in=120)
         assert mock_client.generate_presigned_url.call_args.kwargs["ExpiresIn"] == 120
 
 
@@ -159,9 +153,7 @@ class TestPresignedGet:
         assert kwargs["Params"]["Key"] == "media/abc/thumb.jpg"
 
     @pytest.mark.asyncio
-    async def test_content_disposition_passthrough(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_content_disposition_passthrough(self, mock_client: MagicMock) -> None:
         mock_client.generate_presigned_url.return_value = "https://x"
         await storage_module.presigned_get_url(
             "k", response_content_disposition='attachment; filename="a.jpg"'
@@ -201,9 +193,7 @@ class TestHeadObject:
         assert meta is None
 
     @pytest.mark.asyncio
-    async def test_missing_returns_none_nosuchkey(
-        self, mock_client: MagicMock
-    ) -> None:
+    async def test_missing_returns_none_nosuchkey(self, mock_client: MagicMock) -> None:
         mock_client.head_object.side_effect = _make_client_error("NoSuchKey")
         meta = await storage_module.head_object("missing.jpg")
         assert meta is None

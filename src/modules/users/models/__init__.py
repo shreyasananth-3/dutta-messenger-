@@ -16,15 +16,15 @@ from src.modules.users.models.response_models import (
 )
 
 __all__ = [
-    "User",
-    "UserSettings",
-    "UpdateProfileRequest",
-    "SearchUsersRequest",
     "OnlineStatusRequest",
+    "OnlineStatusResponse",
+    "SearchUsersRequest",
+    "UpdateProfileRequest",
     "UpdateUserSettingsRequest",
+    "User",
     "UserProfileResponse",
     "UserSearchResponse",
     "UserSearchResultItem",
-    "OnlineStatusResponse",
+    "UserSettings",
     "UserSettingsResponse",
 ]

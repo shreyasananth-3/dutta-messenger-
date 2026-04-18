@@ -7,7 +7,6 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # The MODULE.md profile-fields table caps bio at 500 chars; the DB column is
 # unbounded TEXT. Enforce the cap here so it's impossible to POST beyond the
 # documented limit.

@@ -10,13 +10,6 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.shared.exceptions import (
-    AuthenticationError,
-    ConflictError,
-    NotFoundError,
-    ValidationError,
-)
-from src.shared.utils.datetime_utils import get_utc_now
 from src.modules.auth.models.db_models import (
     Institution,
     RefreshToken,
@@ -24,6 +17,13 @@ from src.modules.auth.models.db_models import (
     UserInvitation,
 )
 from src.modules.auth.services.auth_service import AuthService
+from src.shared.exceptions import (
+    AuthenticationError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
+from src.shared.utils.datetime_utils import get_utc_now
 
 VALID_PASSWORD = "Sup3rStr0ng!"
 
@@ -40,9 +40,7 @@ async def institution(db_session: AsyncSession) -> Institution:
 
 
 @pytest_asyncio.fixture
-async def existing_user(
-    db_session: AsyncSession, institution: Institution
-) -> User:
+async def existing_user(db_session: AsyncSession, institution: Institution) -> User:
     return await AuthService.register_user(
         db_session,
         institution_id=institution.id,
@@ -100,9 +98,7 @@ class TestCreateInstitution:
 
 class TestRegisterUser:
     @pytest.mark.asyncio
-    async def test_happy_path(
-        self, db_session: AsyncSession, institution: Institution
-    ) -> None:
+    async def test_happy_path(self, db_session: AsyncSession, institution: Institution) -> None:
         user = await AuthService.register_user(
             db_session,
             institution_id=institution.id,
@@ -185,27 +181,21 @@ class TestLogin:
         assert user.last_seen_at is not None
         # refresh token row persisted
         rows = (
-            await db_session.execute(
-                select(RefreshToken).where(RefreshToken.user_id == user.id)
-            )
-        ).scalars().all()
+            (await db_session.execute(select(RefreshToken).where(RefreshToken.user_id == user.id)))
+            .scalars()
+            .all()
+        )
         assert len(rows) >= 1
 
     @pytest.mark.asyncio
-    async def test_wrong_password_401(
-        self, db_session: AsyncSession, existing_user: User
-    ) -> None:
+    async def test_wrong_password_401(self, db_session: AsyncSession, existing_user: User) -> None:
         with pytest.raises(AuthenticationError):
-            await AuthService.login(
-                db_session, email=existing_user.email, password="Wrong1Pass!"
-            )
+            await AuthService.login(db_session, email=existing_user.email, password="Wrong1Pass!")
 
     @pytest.mark.asyncio
     async def test_unknown_email_401(self, db_session: AsyncSession) -> None:
         with pytest.raises(AuthenticationError):
-            await AuthService.login(
-                db_session, email="ghost@nowhere.test", password=VALID_PASSWORD
-            )
+            await AuthService.login(db_session, email="ghost@nowhere.test", password=VALID_PASSWORD)
 
     @pytest.mark.asyncio
     async def test_inactive_user_blocked(
@@ -214,9 +204,7 @@ class TestLogin:
         existing_user.is_active = False
         await db_session.flush()
         with pytest.raises(AuthenticationError, match="inactive"):
-            await AuthService.login(
-                db_session, email=existing_user.email, password=VALID_PASSWORD
-            )
+            await AuthService.login(db_session, email=existing_user.email, password=VALID_PASSWORD)
 
     @pytest.mark.asyncio
     async def test_deleted_user_blocked(
@@ -225,9 +213,7 @@ class TestLogin:
         existing_user.deleted_at = get_utc_now()
         await db_session.flush()
         with pytest.raises(AuthenticationError, match="deleted"):
-            await AuthService.login(
-                db_session, email=existing_user.email, password=VALID_PASSWORD
-            )
+            await AuthService.login(db_session, email=existing_user.email, password=VALID_PASSWORD)
 
     @pytest.mark.asyncio
     async def test_email_normalised_before_lookup(
@@ -257,9 +243,7 @@ class TestLogin:
 
 class TestRefreshAccessToken:
     @pytest.mark.asyncio
-    async def test_happy_path(
-        self, db_session: AsyncSession, existing_user: User
-    ) -> None:
+    async def test_happy_path(self, db_session: AsyncSession, existing_user: User) -> None:
         access, refresh = await AuthService.refresh_access_token(
             db_session,
             user_id=uuid.UUID(existing_user.id),
@@ -267,10 +251,14 @@ class TestRefreshAccessToken:
         )
         assert access and refresh
         rows = (
-            await db_session.execute(
-                select(RefreshToken).where(RefreshToken.user_id == existing_user.id)
+            (
+                await db_session.execute(
+                    select(RefreshToken).where(RefreshToken.user_id == existing_user.id)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(rows) >= 1
 
     @pytest.mark.asyncio
@@ -399,10 +387,10 @@ class TestAcceptInvitation:
         assert user.email == "invited@school.test"
         # invitation row updated
         loaded = (
-            await db_session.execute(
-                select(UserInvitation).where(UserInvitation.id == inv.id)
-            )
-        ).scalars().first()
+            (await db_session.execute(select(UserInvitation).where(UserInvitation.id == inv.id)))
+            .scalars()
+            .first()
+        )
         assert loaded is not None
         assert loaded.accepted_at is not None
         assert loaded.accepted_user_id == user.id
@@ -473,9 +461,7 @@ class TestAcceptInvitation:
 
 class TestChangePassword:
     @pytest.mark.asyncio
-    async def test_happy_path(
-        self, db_session: AsyncSession, existing_user: User
-    ) -> None:
+    async def test_happy_path(self, db_session: AsyncSession, existing_user: User) -> None:
         new_pw = "EvenStr0nger!"
         old_hash = existing_user.password_hash
         updated = await AuthService.change_password(

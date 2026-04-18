@@ -144,11 +144,7 @@ def auth_headers() -> Any:
         from src.shared.middleware.auth import create_access_token
 
         user_id = user["id"] if isinstance(user, dict) else user.id
-        inst_id = (
-            user["institution_id"]
-            if isinstance(user, dict)
-            else user.institution_id
-        )
+        inst_id = user["institution_id"] if isinstance(user, dict) else user.institution_id
         token = create_access_token(
             user_id=uuid.UUID(str(user_id)),
             institution_id=uuid.UUID(str(inst_id)),

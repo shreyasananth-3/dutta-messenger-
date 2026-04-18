@@ -17,9 +17,7 @@ class TestInitSentry:
         monkeypatch.setenv("SENTRY_DSN", "   ")
         sentry_mod.init_sentry()
 
-    def test_with_dsn_invokes_sdk_init(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_with_dsn_invokes_sdk_init(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("SENTRY_DSN", "https://public@example.ingest.sentry.io/1")
         monkeypatch.setenv("ENVIRONMENT", "test")
         captured: dict[str, object] = {}

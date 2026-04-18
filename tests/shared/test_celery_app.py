@@ -43,10 +43,7 @@ class TestCeleryConfig:
         """Unbounded tasks block workers. Must have both hard + soft limits."""
         assert celery_app.conf.task_time_limit is not None
         assert celery_app.conf.task_soft_time_limit is not None
-        assert (
-            celery_app.conf.task_soft_time_limit
-            < celery_app.conf.task_time_limit
-        )
+        assert celery_app.conf.task_soft_time_limit < celery_app.conf.task_time_limit
 
     def test_worker_recycling_configured(self) -> None:
         """Memory hygiene — Pillow leaks from repeated image ops."""
@@ -64,9 +61,5 @@ class TestTaskRegistration:
         """Until a module defines `@celery_app.task`, the task registry
         should contain only Celery's own internal tasks (celery.*).
         """
-        user_tasks = [
-            name
-            for name in celery_app.tasks
-            if not name.startswith("celery.")
-        ]
+        user_tasks = [name for name in celery_app.tasks if not name.startswith("celery.")]
         assert user_tasks == []

@@ -8,16 +8,14 @@ the root conftest — no mocks of the DB. Redis is mocked where it matters
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.auth.models.db_models import Institution, User
-from src.modules.users.models.db_models import UserSettings
 from src.modules.users.services.user_service import UserService
 from src.shared.exceptions import NotFoundError
-
 
 # ---------------------------------------------------------------------------
 # get_by_id
@@ -72,9 +70,9 @@ class TestGetById:
     async def test_soft_deleted_user_returns_404(
         self, db_session: AsyncSession, institution: Institution, admin_user: User
     ) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        admin_user.deleted_at = datetime.now(timezone.utc)
+        admin_user.deleted_at = datetime.now(UTC)
         await db_session.flush()
         with pytest.raises(NotFoundError):
             await UserService.get_by_id(

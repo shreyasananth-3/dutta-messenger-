@@ -74,5 +74,3 @@ class UserSettingsResponse(BaseModel):
     language: str
     created_at: datetime
     updated_at: datetime
-
-

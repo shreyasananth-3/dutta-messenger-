@@ -57,9 +57,7 @@ class TestMarkOnline:
     async def test_sets_key_with_ttl(self, mock_redis: MagicMock) -> None:
         user_id = uuid.uuid4()
         await presence_service.mark_online(user_id)
-        mock_redis.set.assert_awaited_once_with(
-            f"user:online:{user_id}", "1", ex=60
-        )
+        mock_redis.set.assert_awaited_once_with(f"user:online:{user_id}", "1", ex=60)
 
 
 class TestMarkOffline:
@@ -99,9 +97,7 @@ class TestGetOnlineMap:
         assert result == {u1: True, u2: False, u3: True}
 
     @pytest.mark.asyncio
-    async def test_queues_one_command_per_user(
-        self, mock_redis: MagicMock
-    ) -> None:
+    async def test_queues_one_command_per_user(self, mock_redis: MagicMock) -> None:
         u1 = uuid.uuid4()
         u2 = uuid.uuid4()
         mock_redis.pipeline.return_value.execute.return_value = [1, 1]

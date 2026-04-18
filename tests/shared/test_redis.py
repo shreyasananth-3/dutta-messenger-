@@ -51,9 +51,7 @@ class TestLiveRedis:
         assert await get_cache(key) is None
 
     @pytest.mark.asyncio
-    async def test_publish_event_returns_subscriber_count(
-        self, live_redis: Any
-    ) -> None:
+    async def test_publish_event_returns_subscriber_count(self, live_redis: Any) -> None:
         # No subscribers, so count should be 0.
         assert await publish_event("dutta:test:channel", "ping") == 0
 
@@ -71,9 +69,7 @@ class TestSwallowedErrors:
     """When the underlying client raises, helpers must return safe defaults."""
 
     @pytest.mark.asyncio
-    async def test_set_cache_returns_false_on_error(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_set_cache_returns_false_on_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         class _Bad:
             async def setex(self, *_a: Any, **_k: Any) -> None:
                 raise RuntimeError("nope")
@@ -85,9 +81,7 @@ class TestSwallowedErrors:
         assert await set_cache("k", "v") is False
 
     @pytest.mark.asyncio
-    async def test_get_cache_returns_none_on_error(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_get_cache_returns_none_on_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         class _Bad:
             async def get(self, *_a: Any, **_k: Any) -> None:
                 raise RuntimeError("nope")

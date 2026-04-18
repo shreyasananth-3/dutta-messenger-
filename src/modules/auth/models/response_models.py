@@ -53,7 +53,7 @@ class LoginResponse(BaseModel):
     user: UserResponse
     access_token: str
     refresh_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105 - OAuth 2.0 token_type per RFC 6750, not a password
     expires_in_seconds: int
 
 
@@ -62,7 +62,7 @@ class RefreshTokenResponse(BaseModel):
 
     access_token: str
     refresh_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105 - OAuth 2.0 token_type per RFC 6750, not a password
     expires_in_seconds: int
 
 
@@ -103,5 +103,5 @@ class AcceptInvitationResponse(BaseModel):
     user: UserResponse
     access_token: str
     refresh_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105 - OAuth 2.0 token_type per RFC 6750, not a password
     expires_in_seconds: int

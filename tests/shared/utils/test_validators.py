@@ -114,7 +114,7 @@ class TestValidateFileSize:
 
     def test_over_cap_raises(self) -> None:
         with pytest.raises(ValidationError):
-            validate_file_size(10 ** 12)
+            validate_file_size(10**12)
 
 
 class TestValidateMessageContent:

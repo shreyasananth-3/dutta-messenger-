@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-import structlog
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from structlog.testing import capture_logs
@@ -29,9 +28,7 @@ def _build_app() -> FastAPI:
 @pytest.mark.asyncio
 async def test_success_logs_request_and_response() -> None:
     with capture_logs() as logs:
-        async with AsyncClient(
-            transport=ASGITransport(app=_build_app()), base_url="http://t"
-        ) as c:
+        async with AsyncClient(transport=ASGITransport(app=_build_app()), base_url="http://t") as c:
             r = await c.get("/ok?x=1")
             assert r.status_code == 200
     events = [entry["event"] for entry in logs]
@@ -45,9 +42,7 @@ async def test_success_logs_request_and_response() -> None:
 @pytest.mark.asyncio
 async def test_error_path_logs_http_error_event() -> None:
     with capture_logs() as logs:
-        async with AsyncClient(
-            transport=ASGITransport(app=_build_app()), base_url="http://t"
-        ) as c:
+        async with AsyncClient(transport=ASGITransport(app=_build_app()), base_url="http://t") as c:
             with pytest.raises(RuntimeError):
                 await c.get("/boom")
     events = [entry["event"] for entry in logs]

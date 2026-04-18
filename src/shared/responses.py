@@ -4,7 +4,7 @@ Provides consistent response structures for single resources,
 lists with pagination, and errors.
 """
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
@@ -20,7 +20,7 @@ class PaginationInfo:
 
 
 @dataclass
-class SuccessResponse(Generic[T]):
+class SuccessResponse(Generic[T]):  # noqa: UP046 - retain Generic[T] for Python < 3.12 compat
     """Standard response for successful operations.
 
     Attributes:
@@ -31,7 +31,7 @@ class SuccessResponse(Generic[T]):
 
 
 @dataclass
-class PaginatedResponse(Generic[T]):
+class PaginatedResponse(Generic[T]):  # noqa: UP046 - retain Generic[T] for Python < 3.12 compat
     """Standard response for paginated list operations.
 
     Attributes:
@@ -63,7 +63,7 @@ class ErrorResponse:
     error: ErrorDetail
 
 
-def success_response(data: T) -> dict[str, Any]:
+def success_response(data: T) -> dict[str, Any]:  # noqa: UP047 - retain old-style generic for consistency with SuccessResponse
     """Format single resource response.
 
     Args:

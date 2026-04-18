@@ -33,9 +33,7 @@ class TestEnvBackend:
 
 class TestUnimplementedBackends:
     @pytest.mark.parametrize("backend", ["aws", "gcp", "vault"])
-    def test_raises_not_implemented(
-        self, monkeypatch: pytest.MonkeyPatch, backend: str
-    ) -> None:
+    def test_raises_not_implemented(self, monkeypatch: pytest.MonkeyPatch, backend: str) -> None:
         sp = _reload(monkeypatch, backend)
         with pytest.raises(NotImplementedError):
             sp.get_secret("ANYTHING")

@@ -55,7 +55,7 @@ class AuditEvent(StrEnum):
     USER_REGISTERED = "user.registered"
     USER_LOGIN_SUCCESS = "user.login.success"
     USER_LOGIN_FAILURE = "user.login.failure"
-    USER_PASSWORD_CHANGED = "user.password.changed"
+    USER_PASSWORD_CHANGED = "user.password.changed"  # noqa: S105 - audit event name, not a password
     USER_DELETED = "user.deleted"
     USER_PROFILE_UPDATED = "user.profile.updated"
     USER_SUSPENDED = "user.suspended"
@@ -69,7 +69,7 @@ class AuditEvent(StrEnum):
     MESSAGE_DELETED = "message.deleted"
     MESSAGE_EDITED = "message.edited"
     MEDIA_UPLOADED = "media.uploaded"
-    NOTIFICATION_TOKEN_REGISTERED = "notification.token.registered"
+    NOTIFICATION_TOKEN_REGISTERED = "notification.token.registered"  # noqa: S105 - audit event name, not a token
 
 
 @dataclass(frozen=True)

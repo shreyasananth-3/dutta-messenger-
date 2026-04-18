@@ -25,9 +25,7 @@ def _build_app() -> FastAPI:
 @pytest.mark.asyncio
 async def test_inbound_header_echoed() -> None:
     cid = "abc-123-incoming"
-    async with AsyncClient(
-        transport=ASGITransport(app=_build_app()), base_url="http://t"
-    ) as c:
+    async with AsyncClient(transport=ASGITransport(app=_build_app()), base_url="http://t") as c:
         r = await c.get("/ping", headers={HEADER: cid})
         assert r.status_code == 200
         assert r.headers[HEADER] == cid
@@ -35,9 +33,7 @@ async def test_inbound_header_echoed() -> None:
 
 @pytest.mark.asyncio
 async def test_missing_header_generates_uuid() -> None:
-    async with AsyncClient(
-        transport=ASGITransport(app=_build_app()), base_url="http://t"
-    ) as c:
+    async with AsyncClient(transport=ASGITransport(app=_build_app()), base_url="http://t") as c:
         r = await c.get("/ping")
         cid = r.headers[HEADER]
         # Confirms it's a parseable UUID
@@ -46,9 +42,7 @@ async def test_missing_header_generates_uuid() -> None:
 
 @pytest.mark.asyncio
 async def test_each_request_gets_unique_id_when_missing() -> None:
-    async with AsyncClient(
-        transport=ASGITransport(app=_build_app()), base_url="http://t"
-    ) as c:
+    async with AsyncClient(transport=ASGITransport(app=_build_app()), base_url="http://t") as c:
         r1 = await c.get("/ping")
         r2 = await c.get("/ping")
         assert r1.headers[HEADER] != r2.headers[HEADER]

@@ -23,9 +23,7 @@ HEADER = "X-Request-ID"
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """Reads or creates a correlation ID, binds it for the request lifetime."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         correlation_id = request.headers.get(HEADER) or str(uuid.uuid4())
         bind_correlation_id(correlation_id)
         response = await call_next(request)

@@ -5,16 +5,13 @@ password strength, file types, etc.
 """
 
 import re
-from typing import Pattern
+from re import Pattern
 
 from src.config import settings
 from src.shared.exceptions import ValidationError
 
-
 # Regex patterns
-EMAIL_PATTERN: Pattern[str] = re.compile(
-    r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-)
+EMAIL_PATTERN: Pattern[str] = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 PASSWORD_MIN_LENGTH: int = 8
 ALLOWED_FILE_TYPES = set(settings.ALLOWED_FILE_TYPES.split(","))
 

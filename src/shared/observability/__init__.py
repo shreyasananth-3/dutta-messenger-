@@ -26,4 +26,4 @@ def init_observability(app) -> None:  # type: ignore[no-untyped-def]
     register_metrics(app)
 
 
-__all__ = ["init_observability", "bind_correlation_id"]
+__all__ = ["bind_correlation_id", "init_observability"]

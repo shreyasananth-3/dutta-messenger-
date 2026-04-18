@@ -85,9 +85,7 @@ class UserInvitation(BaseModel):
         UUID(as_uuid=False), ForeignKey("institutions.id"), nullable=False, index=True
     )
     email = Column(String(255), nullable=False)
-    invited_by_user_id = Column(
-        UUID(as_uuid=False), ForeignKey("users.id"), nullable=False
-    )
+    invited_by_user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=False)
     token = Column(String(255), nullable=False, unique=True, index=True)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     accepted_at = Column(DateTime(timezone=True), nullable=True)
@@ -115,9 +113,7 @@ class RefreshToken(BaseModel):
 
     __tablename__ = "refresh_tokens"
 
-    user_id = Column(
-        UUID(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True
-    )
+    user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
     token_hash = Column(String(255), nullable=False, unique=True)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     revoked_at = Column(DateTime(timezone=True), nullable=True)

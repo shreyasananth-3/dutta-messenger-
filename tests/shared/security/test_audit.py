@@ -20,9 +20,7 @@ async def actor_and_institution(
     db_session: AsyncSession,
 ) -> tuple[User, Institution]:
     """Create a real user + institution so the audit_logs FKs are satisfied."""
-    inst = await AuthService.create_institution(
-        db_session, name=f"AuditCo {uuid.uuid4().hex[:8]}"
-    )
+    inst = await AuthService.create_institution(db_session, name=f"AuditCo {uuid.uuid4().hex[:8]}")
     await db_session.flush()
     user = await AuthService.register_user(
         db_session,
@@ -54,14 +52,18 @@ class TestWriteAudit:
             metadata={"ip": "127.0.0.1", "ua": "test"},
         )
         row = (
-            await db_session.execute(
-                text(
-                    "SELECT actor_id, institution_id, action, resource_type, "
-                    "resource_id, metadata FROM audit_logs WHERE actor_id = :a"
-                ),
-                {"a": actor.id},
+            (
+                await db_session.execute(
+                    text(
+                        "SELECT actor_id, institution_id, action, resource_type, "
+                        "resource_id, metadata FROM audit_logs WHERE actor_id = :a"
+                    ),
+                    {"a": actor.id},
+                )
             )
-        ).mappings().first()
+            .mappings()
+            .first()
+        )
         assert row is not None
         assert str(row["actor_id"]) == actor.id
         assert str(row["institution_id"]) == inst.id
@@ -88,13 +90,15 @@ class TestWriteAudit:
             resource_id=None,
         )
         row = (
-            await db_session.execute(
-                text(
-                    "SELECT resource_id FROM audit_logs WHERE actor_id = :a"
-                ),
-                {"a": actor.id},
+            (
+                await db_session.execute(
+                    text("SELECT resource_id FROM audit_logs WHERE actor_id = :a"),
+                    {"a": actor.id},
+                )
             )
-        ).mappings().first()
+            .mappings()
+            .first()
+        )
         assert row is not None
         assert row["resource_id"] is None
 
@@ -114,11 +118,15 @@ class TestWriteAudit:
             metadata=None,
         )
         row = (
-            await db_session.execute(
-                text("SELECT metadata FROM audit_logs WHERE actor_id = :a"),
-                {"a": actor.id},
+            (
+                await db_session.execute(
+                    text("SELECT metadata FROM audit_logs WHERE actor_id = :a"),
+                    {"a": actor.id},
+                )
             )
-        ).mappings().first()
+            .mappings()
+            .first()
+        )
         meta = row["metadata"]
         if isinstance(meta, str):
             meta = json.loads(meta)

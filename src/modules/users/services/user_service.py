@@ -16,7 +16,7 @@ import uuid
 from typing import Any
 
 import structlog
-from sqlalchemy import desc, func, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.users.models.db_models import User, UserSettings
@@ -74,9 +74,7 @@ class UserService:
         Email + status are intentionally excluded — see MODULE.md's
         "Profile Fields" table.
         """
-        user = await UserService.get_by_id(
-            db, user_id=user_id, institution_id=institution_id
-        )
+        user = await UserService.get_by_id(db, user_id=user_id, institution_id=institution_id)
 
         updated_fields: dict[str, Any] = {}
         if full_name is not None:
@@ -175,9 +173,7 @@ class UserService:
         """
         # Tenant check: confirm the user belongs to this institution before
         # reading or creating settings for them.
-        await UserService.get_by_id(
-            db, user_id=user_id, institution_id=institution_id
-        )
+        await UserService.get_by_id(db, user_id=user_id, institution_id=institution_id)
 
         stmt = select(UserSettings).where(UserSettings.user_id == str(user_id))
         result = await db.execute(stmt)

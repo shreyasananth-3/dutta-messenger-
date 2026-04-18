@@ -15,24 +15,18 @@ class TestInitTracing:
         tracing_mod.init_tracing(FastAPI())
 
     @pytest.mark.parametrize("flag", ["false", "no", "0", "off"])
-    def test_explicit_false_values(
-        self, monkeypatch: pytest.MonkeyPatch, flag: str
-    ) -> None:
+    def test_explicit_false_values(self, monkeypatch: pytest.MonkeyPatch, flag: str) -> None:
         monkeypatch.setenv("OTEL_ENABLED", flag)
         assert tracing_mod._enabled() is False
 
     @pytest.mark.parametrize("flag", ["true", "1", "yes", "TRUE"])
-    def test_explicit_truthy_values(
-        self, monkeypatch: pytest.MonkeyPatch, flag: str
-    ) -> None:
+    def test_explicit_truthy_values(self, monkeypatch: pytest.MonkeyPatch, flag: str) -> None:
         monkeypatch.setenv("OTEL_ENABLED", flag)
         assert tracing_mod._enabled() is True
 
 
 class TestObservabilityInit:
-    def test_init_observability_runs_end_to_end(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_init_observability_runs_end_to_end(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # All four subsystems should run without error in their default
         # (disabled / development) configuration.
         monkeypatch.delenv("OTEL_ENABLED", raising=False)

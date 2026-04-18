@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 
-from src.modules.auth.models.db_models import Institution, User
+from src.modules.auth.models.db_models import User
 from src.modules.users.services import presence_service
 
 API = "/api/v1"
@@ -189,12 +189,8 @@ class TestUpdateMe:
     ) -> None:
         """Sending the same PATCH twice produces the same state."""
         payload = {"bio": "Idempotent"}
-        r1 = await client.patch(
-            f"{API}/users/me", headers=auth_headers(admin_user), json=payload
-        )
-        r2 = await client.patch(
-            f"{API}/users/me", headers=auth_headers(admin_user), json=payload
-        )
+        r1 = await client.patch(f"{API}/users/me", headers=auth_headers(admin_user), json=payload)
+        r2 = await client.patch(f"{API}/users/me", headers=auth_headers(admin_user), json=payload)
         assert r1.status_code == 200
         assert r2.status_code == 200
         assert r1.json()["data"]["bio"] == r2.json()["data"]["bio"]
@@ -403,9 +399,7 @@ class TestOnlineRoute:
     async def test_empty_list_422(
         self, client: AsyncClient, admin_user: User, auth_headers: Any
     ) -> None:
-        r = await client.get(
-            f"{API}/users/online", headers=auth_headers(admin_user)
-        )
+        r = await client.get(f"{API}/users/online", headers=auth_headers(admin_user))
         assert r.status_code == 422
 
 

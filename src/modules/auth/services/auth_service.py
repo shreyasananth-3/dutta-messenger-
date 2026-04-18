@@ -6,7 +6,7 @@ and institutional invite workflow.
 
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 
 import bcrypt
 import structlog
@@ -14,9 +14,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
+from src.modules.auth.models.db_models import (
+    Institution,
+    RefreshToken,
+    User,
+    UserInvitation,
+)
 from src.shared.exceptions import (
-    ConflictError,
     AuthenticationError,
+    ConflictError,
     NotFoundError,
     ValidationError,
 )
@@ -24,20 +30,9 @@ from src.shared.middleware.auth import create_access_token, create_refresh_token
 from src.shared.utils.datetime_utils import add_hours, get_utc_now
 from src.shared.utils.validators import (
     validate_email,
-    validate_password,
     validate_full_name,
+    validate_password,
     validate_phone_number,
-)
-from src.modules.auth.models.db_models import (
-    Institution,
-    User,
-    UserInvitation,
-    RefreshToken,
-)
-from src.modules.auth.models.response_models import (
-    InstitutionResponse,
-    UserResponse,
-    InvitationResponse,
 )
 
 logger = structlog.get_logger()
@@ -65,9 +60,7 @@ class AuthService:
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its bcrypt hash."""
         try:
-            return bcrypt.checkpw(
-                _truncate(plain_password), hashed_password.encode("utf-8")
-            )
+            return bcrypt.checkpw(_truncate(plain_password), hashed_password.encode("utf-8"))
         except ValueError:
             # Malformed hash — treat as a non-match rather than crashing.
             return False
@@ -102,9 +95,7 @@ class AuthService:
             ConflictError: If institution with same name already exists.
         """
         # Check if institution already exists
-        result = await db.execute(
-            select(Institution).where(Institution.name == name)
-        )
+        result = await db.execute(select(Institution).where(Institution.name == name))
         if result.scalars().first():
             logger.warning("institution_creation_duplicate", name=name)
             raise ConflictError(f"Institution '{name}' already exists", "Institution")
@@ -167,9 +158,7 @@ class AuthService:
             phone_number = validate_phone_number(phone_number)
 
         # Check institution exists
-        result = await db.execute(
-            select(Institution).where(Institution.id == institution_id)
-        )
+        result = await db.execute(select(Institution).where(Institution.id == institution_id))
         institution = result.scalars().first()
         if not institution:
             raise NotFoundError("Institution", institution_id)
@@ -378,9 +367,7 @@ class AuthService:
         email = validate_email(email)
 
         # Check institution exists
-        result = await db.execute(
-            select(Institution).where(Institution.id == institution_id)
-        )
+        result = await db.execute(select(Institution).where(Institution.id == institution_id))
         if not result.scalars().first():
             raise NotFoundError("Institution", institution_id)
 
@@ -457,9 +444,7 @@ class AuthService:
         full_name = validate_full_name(full_name)
 
         # Find invitation
-        result = await db.execute(
-            select(UserInvitation).where(UserInvitation.token == token)
-        )
+        result = await db.execute(select(UserInvitation).where(UserInvitation.token == token))
         invitation = result.scalars().first()
 
         if not invitation:

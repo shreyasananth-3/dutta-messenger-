@@ -45,9 +45,7 @@ async def admin_user(db_session: AsyncSession, institution: Institution) -> User
 
 
 @pytest_asyncio.fixture
-async def other_user(
-    db_session: AsyncSession, institution: Institution, admin_user: User
-) -> User:
+async def other_user(db_session: AsyncSession, institution: Institution, admin_user: User) -> User:
     """Second-registered user. NOT the admin under the heuristic."""
     user = await AuthService.register_user(
         db_session,
@@ -73,9 +71,7 @@ async def foreign_institution(db_session: AsyncSession) -> Institution:
 
 
 @pytest_asyncio.fixture
-async def foreign_user(
-    db_session: AsyncSession, foreign_institution: Institution
-) -> User:
+async def foreign_user(db_session: AsyncSession, foreign_institution: Institution) -> User:
     """A user who belongs to `foreign_institution`. Used to verify that
     institution-A users cannot read / poke institution-B rows."""
     user = await AuthService.register_user(

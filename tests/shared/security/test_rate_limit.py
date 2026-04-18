@@ -50,8 +50,7 @@ class TestLimiterInstance:
         # slowapi wraps each default rule in a LimitGroup with the original
         # rule string stashed in a dunder-mangled attribute.
         providers = [
-            getattr(rule, "_LimitGroup__limit_provider", "")
-            for rule in limiter._default_limits
+            getattr(rule, "_LimitGroup__limit_provider", "") for rule in limiter._default_limits
         ]
         assert any("300" in str(p) for p in providers)
 

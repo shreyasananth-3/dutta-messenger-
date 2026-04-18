@@ -39,7 +39,7 @@ class UserFactory(factory.Factory):  # type: ignore[misc]
     institution_id = factory.SubFactory(InstitutionFactory)
     email = factory.LazyAttribute(lambda _: fake.unique.email())
     full_name = factory.LazyAttribute(lambda _: fake.name())
-    password_hash = "$2b$12$dummy.bcrypt.hash.used.in.tests.only"  # noqa: S105
+    password_hash = "$2b$12$dummy.bcrypt.hash.used.in.tests.only"
     is_active = True
 
 

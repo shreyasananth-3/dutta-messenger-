@@ -5,8 +5,6 @@ from __future__ import annotations
 import base64
 from dataclasses import dataclass
 
-import pytest
-
 from src.shared.utils.pagination import (
     PaginationParams,
     build_next_cursor,

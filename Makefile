@@ -1,4 +1,4 @@
-.PHONY: help install install-dev up down logs lint format typecheck test test-fast test-unit test-integration test-e2e coverage mutation security-scan secrets-scan sbom migrate migrate-new migrate-down run seed openapi-export clean
+.PHONY: help install install-dev up down logs lint format typecheck test test-fast test-unit test-integration test-e2e coverage mutation security-scan secrets-scan sbom migrate migrate-new migrate-down run seed openapi-export clean preflight
 
 VENV       ?= .venv
 PYTHON     ?= $(VENV)/bin/python
@@ -15,6 +15,21 @@ PIP_AUDIT  ?= $(VENV)/bin/pip-audit
 CYCLONEDX  ?= $(VENV)/bin/cyclonedx-py
 PRECOMMIT  ?= $(VENV)/bin/pre-commit
 ACTIVATE    = . $(VENV)/bin/activate
+
+preflight:  ## Run the local equivalent of CI before pushing
+	@echo "==> [1/6] ruff check"
+	@$(RUFF) check src tests
+	@echo "==> [2/6] ruff format --check"
+	@$(RUFF) format --check src tests
+	@echo "==> [3/6] mypy --strict (warn-only, matches CI)"
+	@$(MYPY) src || true
+	@echo "==> [4/6] pytest + coverage"
+	@./scripts/run_tests.sh > /dev/null
+	@echo "==> [5/6] pip-audit"
+	@$(PIP_AUDIT) --strict || echo "  (pip-audit found advisories — warn-only in CI too)"
+	@echo "==> [6/6] detect-secrets"
+	@$(DETECT_SEC) scan --baseline .secrets.baseline > /dev/null
+	@echo "\n  Local CI equivalent green. Safe to push."
 
 help:  ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)

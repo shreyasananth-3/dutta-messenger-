@@ -28,13 +28,13 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | 3 — 7 mini-RFCs | ✅ drafted + implementability-checked (4 drifts fixed) — see [docs/design/](design/) — **7 open questions below need human sign-off before Stage 4** | |
 | Stage-0/1 gap fix: celery_app + storage + idempotency middleware | ✅ done | `d8714fc`, `512c0bd`, `3c1e7f5` |
 | 4a — `users` module (7 endpoints; 8th deferred to 4b) | ✅ done | `2a9b84d` |
-| 4b — `acl` module | ⏳ | |
-| 4c — `groups` module | ⏳ | |
-| 4d — `chat` module (incl. WebSocket) | ⏳ | |
+| 4b — `acl` module (roles, perms, 3-level access) | ✅ done | `481208f` |
+| 4c — `groups` module (dual mode, members, topics) | ✅ done | `f9be6bc` |
+| 4d — `chat` module (REST + WebSocket) | ✅ done | `d92ce1c` |
 | 4e — `media` module | ✅ done — extracted from PR #5 ([closed](https://github.com/shreyasananth-3/dutta-messenger-/pull/5)) | `5c83a1a` |
 | 4f — `notifications` module | ✅ done — extracted from PR #4 ([closed](https://github.com/shreyasananth-3/dutta-messenger-/pull/4)) | `f654775` |
-| 5 — UI contract (all modules) | ⏳ | |
-| 6 — Load + **E2E (tests/e2e/)** + seed | ⏳ | |
+| 5 — UI contract (all modules) | ✅ done — `docs/ui-contract/openapi.json` 33 paths, per-module contracts under `src/modules/{name}/docs/` | `e9ffe1b` |
+| 6 — Load + E2E + seed | ✅ done — `tests/e2e/test_full_journey.py`, `scripts/seed.py`, `scripts/smoke_multi_user_chat.py` | `f06e99d` + this | 
 
 **Repo:** https://github.com/shreyasananth-3/dutta-messenger-.git
 **Branch:** `main` (trunk-based, every module lands behind an `ENABLE_*` feature flag that defaults OFF).

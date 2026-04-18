@@ -203,6 +203,21 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MarkReadRequest": {
+        "description": "Client payload for `POST /api/v1/notifications/mark-read`.\n\nWhen `notification_ids` is empty, marks every unread notification for\nthe caller. An explicit list limits the mutation to those IDs.",
+        "properties": {
+          "notification_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Notification Ids",
+            "type": "array"
+          }
+        },
+        "title": "MarkReadRequest",
+        "type": "object"
+      },
       "RefreshTokenRequest": {
         "description": "Request to refresh access token.",
         "properties": {
@@ -269,6 +284,47 @@
           "full_name"
         ],
         "title": "RegisterRequest",
+        "type": "object"
+      },
+      "RegisterTokenRequest": {
+        "description": "Client payload for `POST /api/v1/notifications/tokens`.",
+        "properties": {
+          "device_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "device_type": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "pattern": "^(ios|android|web)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Type"
+          },
+          "token": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "RegisterTokenRequest",
         "type": "object"
       },
       "UpdateProfileRequest": {
@@ -988,6 +1044,175 @@
         "summary": "Get Download Url",
         "tags": [
           "media"
+        ]
+      }
+    },
+    "/api/v1/notifications/mark-read": {
+      "post": {
+        "description": "Mark notifications as read.\n\nWhen `notification_ids` is empty, every unread row for the caller is\nmarked read. When non-empty, only the listed IDs are updated \u2014 and only\nthose actually owned by the caller. Cross-user IDs are ignored\nsilently so this cannot be used to probe for existence.\n\nWrites one audit row inside the same transaction as the update when\nat least one row is actually changed.",
+        "operationId": "mark_read_api_v1_notifications_mark_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Mark Read Api V1 Notifications Mark Read Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Mark Read",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/tokens": {
+      "post": {
+        "description": "Register (or reactivate) an FCM device token for the caller.",
+        "operationId": "register_token_api_v1_notifications_tokens_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Register Token Api V1 Notifications Tokens Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Register Token",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/tokens/{token_id}": {
+      "delete": {
+        "description": "Soft-deactivate one of the caller's FCM tokens.",
+        "operationId": "revoke_token_api_v1_notifications_tokens__token_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Token Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Token",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "description": "Return the caller's unread notification count.\n\n`notifications` is transitively tenant-scoped via `users.institution_id`\n(see `docs/design/tenant-isolation.md` \u00a71.2). The defence-in-depth\njoin guards against a future JWT drift where `user_id` and\n`institution_id` fall out of sync.",
+        "operationId": "unread_count_api_v1_notifications_unread_count_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Unread Count Api V1 Notifications Unread Count Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unread Count",
+        "tags": [
+          "notifications"
         ]
       }
     },

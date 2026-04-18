@@ -79,6 +79,12 @@ IDEMPOTENCY_STORE_FAILED = Counter(
     "after a successful request. Replay will miss if this is non-zero.",
 )
 
+NOTIFICATIONS_DELIVERED = Counter(
+    "dutta_notifications_delivered_total",
+    "Push notifications delivered via FCM, labelled by FCM outcome.",
+    ["result"],
+)
+
 
 def register_metrics(app) -> None:  # type: ignore[no-untyped-def]
     """Attach prometheus-fastapi-instrumentator and expose `/metrics`."""

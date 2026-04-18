@@ -73,6 +73,10 @@ class AuditEvent(StrEnum):
     MEDIA_RECYCLE_BIN_ENTERED = "media.recycle_bin_entered"
     MEDIA_PERMANENTLY_DELETED = "media.permanently_deleted"
     NOTIFICATION_TOKEN_REGISTERED = "notification.token.registered"  # noqa: S105 - audit event name, not a token
+    NOTIFICATION_TOKEN_REVOKED = "notification.token.revoked"  # noqa: S105 - audit event name, not a token
+    NOTIFICATION_BATCH_SENT = "notification.batch.sent"
+    NOTIFICATION_BATCH_FAILED = "notification.batch.failed"
+    NOTIFICATIONS_MARKED_READ = "notifications.marked_read"
 
 
 @dataclass(frozen=True)

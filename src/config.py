@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     FCM_PRIVATE_KEY_ID: str = ""
     FCM_PRIVATE_KEY: str = ""
     FCM_CLIENT_EMAIL: str = ""
+    # HTTP v1 endpoint template; {project_id} is substituted at send time.
+    FCM_ENDPOINT: str = "https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
+    # When true, the Celery push task uses an in-memory mock FCM client. CI
+    # and dev default to true; production sets false so the real SDK is used.
+    FCM_MOCK_MODE: bool = True
+    # Per-batch FCM send cap (multicast limit is 500 on HTTP v1).
+    FCM_BATCH_MAX_RECIPIENTS: int = 500
 
     # S3 / MinIO
     STORAGE_TYPE: str = "minio"  # "minio" or "s3"

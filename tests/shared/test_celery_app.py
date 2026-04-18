@@ -57,9 +57,14 @@ class TestCeleryConfig:
 
 
 class TestTaskRegistration:
-    def test_no_tasks_registered_at_import(self) -> None:
-        """Until a module defines `@celery_app.task`, the task registry
-        should contain only Celery's own internal tasks (celery.*).
+    def test_only_known_modules_register_tasks(self) -> None:
+        """Every user-level task in the shared registry must be declared
+        by one of the modules that actually owns background work.
+
+        Today: notifications (FCM fanout). Add to the allow-list when a
+        new module starts enqueueing tasks so typos are surfaced.
         """
+        allowed_prefixes = ("notifications.",)
         user_tasks = [name for name in celery_app.tasks if not name.startswith("celery.")]
-        assert user_tasks == []
+        unexpected = [n for n in user_tasks if not n.startswith(allowed_prefixes)]
+        assert unexpected == [], f"Unexpected Celery tasks registered: {unexpected}"

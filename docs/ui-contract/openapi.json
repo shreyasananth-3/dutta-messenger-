@@ -1,6 +1,22 @@
 {
   "components": {
     "schemas": {
+      "AssignRoleRequest": {
+        "description": "Body for `POST /api/v1/acl/users/{id}/roles`.",
+        "properties": {
+          "role_id": {
+            "description": "ID of the role to assign.",
+            "format": "uuid",
+            "title": "Role Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role_id"
+        ],
+        "title": "AssignRoleRequest",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "description": "Request to change user password.",
         "properties": {
@@ -503,6 +519,199 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/acl/roles": {
+      "get": {
+        "description": "List every role in the caller's institution.",
+        "operationId": "list_roles_api_v1_acl_roles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Roles Api V1 Acl Roles Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Roles",
+        "tags": [
+          "acl"
+        ]
+      }
+    },
+    "/api/v1/acl/users/{user_id}/permissions": {
+      "get": {
+        "description": "Effective roles + permissions for a user. Self or admin-only.",
+        "operationId": "list_user_permissions_api_v1_acl_users__user_id__permissions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List User Permissions Api V1 Acl Users  User Id  Permissions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List User Permissions",
+        "tags": [
+          "acl"
+        ]
+      }
+    },
+    "/api/v1/acl/users/{user_id}/roles": {
+      "post": {
+        "description": "Assign a role to a user. Idempotent.",
+        "operationId": "assign_role_api_v1_acl_users__user_id__roles_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Assign Role Api V1 Acl Users  User Id  Roles Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign Role",
+        "tags": [
+          "acl"
+        ]
+      }
+    },
+    "/api/v1/acl/users/{user_id}/roles/{role_id}": {
+      "delete": {
+        "description": "Revoke a role from a user.",
+        "operationId": "revoke_role_api_v1_acl_users__user_id__roles__role_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "role_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Role Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Role",
+        "tags": [
+          "acl"
+        ]
+      }
+    },
     "/api/v1/auth/change-password": {
       "post": {
         "description": "Change password for authenticated user.\n\nArgs:\n    data: Change password request.\n    current_user: Current authenticated user.\n    db: Database session.\n\nReturns:\n    Updated user info.",

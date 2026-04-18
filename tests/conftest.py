@@ -58,7 +58,7 @@ _load_dotenv()
 # the same PR. Do NOT flip a flag before the module's `router.py` exists
 # — `src/main.py` will ImportError at app creation.
 # ---------------------------------------------------------------------------
-for _flag in ("ENABLE_USERS", "ENABLE_MEDIA", "ENABLE_NOTIFICATIONS"):
+for _flag in ("ENABLE_USERS", "ENABLE_MEDIA", "ENABLE_NOTIFICATIONS", "ENABLE_ACL"):
     os.environ[_flag] = "true"
 
 

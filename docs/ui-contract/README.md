@@ -2,7 +2,7 @@
 
 **Audience:** Flutter / UI developers integrating with the DuttaMessenger backend.
 
-**Status of this document:** Current as of commit `7197905` (Stages 0 + 1 complete). Reflects **what is actually shipped and callable today**, not what is planned. Updated as each backend module lands.
+**Status of this document:** Current as of commit `d92ce1c` (Stages 0–4 complete: auth, users, acl, groups, chat, media, notifications). Reflects **what is actually shipped and callable today**, not what is planned. Updated as each backend module lands.
 
 ---
 
@@ -14,12 +14,12 @@
 | ✅ **Standard error envelope** | **Ready** | Every API returns the same shape (see §4) |
 | ✅ **Correlation IDs** | **Ready** | `X-Request-ID` header echoed on every response |
 | ✅ **Health probe** | **Ready** | `GET /health` — useful for smoke tests |
-| ⏳ Users (profiles, search, presence) | not started | feature flag `ENABLE_USERS=false` |
-| ⏳ ACL (roles, permissions) | not started | `ENABLE_ACL=false` |
-| ⏳ Groups (incl. topics) | not started | `ENABLE_GROUPS=false` |
-| ⏳ Chat (REST + WebSocket) | not started | `ENABLE_CHAT=false` |
-| ⏳ Media upload | not started | `ENABLE_MEDIA=false` |
-| ⏳ Push notifications | not started | `ENABLE_NOTIFICATIONS=false` |
+| ✅ Users (profiles, search, presence, settings) | **Ready** | `ENABLE_USERS=true`; 7 endpoints |
+| ✅ ACL (roles, permissions, 3-level access) | **Ready** | `ENABLE_ACL=true`; 4 endpoints |
+| ✅ Groups (incl. topics) | **Ready** | `ENABLE_GROUPS=true`; 11 endpoints |
+| ✅ Chat (REST + WebSocket) | **Ready** | `ENABLE_CHAT=true`; 6 REST + `/api/v1/ws/chat` |
+| ✅ Media upload | **Ready** | `ENABLE_MEDIA=true`; 4 endpoints + recycle bin |
+| ✅ Push notifications | **Ready** | `ENABLE_NOTIFICATIONS=true`; 4 endpoints + FCM fanout |
 
 **Feature flags are environment variables** read at server startup. A module whose flag is `false` returns `404` for all its routes — you can safely write Flutter code against the planned contracts in `reference-docs/modules/*/MODULE.md` and flip flags on as each module ships.
 
@@ -216,13 +216,24 @@ If your Flutter team uses Claude Code, copy [`CLAUDE_FLUTTER.md`](CLAUDE_FLUTTER
 
 ## 9. Per-module contracts
 
-- [**auth.md**](auth.md) — the 6 auth endpoints (live today)
-- `users.md` — coming with Stage 4a
-- `acl.md` — coming with Stage 4b
-- `groups.md` — coming with Stage 4c
-- `chat.md` — coming with Stage 4d (includes WebSocket event catalog)
-- `media.md` — coming with Stage 4e
-- `notifications.md` — coming with Stage 4f
+- [**auth.md**](auth.md) — 6 auth endpoints
+- [**openapi.json**](openapi.json) — 33-path OpenAPI 3.1 snapshot for codegen (all modules)
+- Module source-of-truth: every module ships its own contract under `src/modules/{name}/docs/`
+  - [users MODULE.md](../../src/modules/users/docs/MODULE.md) + [API.md](../../src/modules/users/docs/API.md)
+  - [acl MODULE.md](../../src/modules/acl/docs/MODULE.md)
+  - [groups MODULE.md](../../src/modules/groups/docs/MODULE.md)
+  - [chat MODULE.md](../../src/modules/chat/docs/MODULE.md) + [API.md](../../src/modules/chat/docs/API.md) + [WEBSOCKET.md](../../src/modules/chat/docs/WEBSOCKET.md)
+  - [media MODULE.md](../../src/modules/media/docs/MODULE.md) + [API.md](../../src/modules/media/docs/API.md)
+  - [notifications MODULE.md](../../src/modules/notifications/docs/MODULE.md) + [API.md](../../src/modules/notifications/docs/API.md)
+
+## 9.1 WebSocket entry point
+
+The chat WebSocket lives at **`ws://localhost:8000/api/v1/ws/chat`**.
+Protocol per [WEBSOCKET.md](../../src/modules/chat/docs/WEBSOCKET.md) —
+the server today implements the minimum viable path (auth → subscribe →
+message.send → message.new broadcast + ping/pong). Advanced features
+(backpressure queue, resume-from-cursor replay, token-expiry hints)
+ship in Stage 6 hardening.
 
 Each module page will include real request/response JSON copied from the test suite, so examples are guaranteed to match production behaviour.
 

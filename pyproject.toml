@@ -107,10 +107,25 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = [
+    # Third-party libs without py.typed markers
     "factory.*",
     "firebase_admin.*",
     "passlib.*",
     "jose.*",
+    "boto3",
+    "botocore.*",
+    "celery",
+    "celery.*",
+    # Feature-flagged Stage-4 modules that aren't built yet. src/main.py
+    # imports these inside `if settings.ENABLE_*:` guards; mypy can't see
+    # the flag gate, so we tell it to treat missing imports as OK. Once a
+    # module lands, its package __init__ makes the import real and mypy
+    # checks it normally.
+    "src.modules.acl.*",
+    "src.modules.groups.*",
+    "src.modules.chat.*",
+    "src.modules.media.*",
+    "src.modules.notifications.*",
 ]
 ignore_missing_imports = true
 

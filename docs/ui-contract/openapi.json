@@ -1,6 +1,30 @@
 {
   "components": {
     "schemas": {
+      "AddMemberRequest": {
+        "description": "Body for `POST /api/v1/groups/{id}/members`.",
+        "properties": {
+          "role": {
+            "default": "member",
+            "enum": [
+              "member",
+              "admin"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "AddMemberRequest",
+        "type": "object"
+      },
       "AssignRoleRequest": {
         "description": "Body for `POST /api/v1/acl/users/{id}/roles`.",
         "properties": {
@@ -53,6 +77,43 @@
           "upload_id"
         ],
         "title": "CompleteUploadRequest",
+        "type": "object"
+      },
+      "CreateGroupRequest": {
+        "description": "Body for `POST /api/v1/groups`.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "mode": {
+            "default": "simple",
+            "enum": [
+              "simple",
+              "topics"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateGroupRequest",
         "type": "object"
       },
       "CreateInstitutionRequest": {
@@ -123,6 +184,46 @@
           "name"
         ],
         "title": "CreateInstitutionRequest",
+        "type": "object"
+      },
+      "CreateTopicRequest": {
+        "description": "Body for `POST /api/v1/groups/{id}/topics`.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "icon_emoji": {
+            "anyOf": [
+              {
+                "maxLength": 10,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Emoji"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateTopicRequest",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -341,6 +442,50 @@
           "token"
         ],
         "title": "RegisterTokenRequest",
+        "type": "object"
+      },
+      "UpdateGroupRequest": {
+        "description": "Body for `PATCH /api/v1/groups/{id}`.",
+        "properties": {
+          "avatar_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateGroupRequest",
         "type": "object"
       },
       "UpdateProfileRequest": {
@@ -944,6 +1089,556 @@
         "summary": "Register",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/groups": {
+      "get": {
+        "description": "List groups the caller is a member of.",
+        "operationId": "list_my_groups_api_v1_groups_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List My Groups Api V1 Groups Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List My Groups",
+        "tags": [
+          "groups"
+        ]
+      },
+      "post": {
+        "description": "Create a group with the caller as owner.",
+        "operationId": "create_group_api_v1_groups_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Group Api V1 Groups Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Group",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}": {
+      "delete": {
+        "description": "Soft-delete (archive) a group \u2014 owner only.",
+        "operationId": "archive_group_api_v1_groups__group_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Archive Group",
+        "tags": [
+          "groups"
+        ]
+      },
+      "get": {
+        "description": "Get a single group (caller must be a member).",
+        "operationId": "get_group_api_v1_groups__group_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Group Api V1 Groups  Group Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Group",
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "description": "Update group metadata \u2014 admin/owner only.",
+        "operationId": "update_group_api_v1_groups__group_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Group Api V1 Groups  Group Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Group",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/members": {
+      "get": {
+        "description": "List group members (any member can read).",
+        "operationId": "list_members_api_v1_groups__group_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Members Api V1 Groups  Group Id  Members Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Members",
+        "tags": [
+          "groups"
+        ]
+      },
+      "post": {
+        "description": "Add a member \u2014 admin/owner only. Idempotent.",
+        "operationId": "add_member_api_v1_groups__group_id__members_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Add Member Api V1 Groups  Group Id  Members Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Member",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/members/{user_id}": {
+      "delete": {
+        "description": "Remove a member \u2014 admin/owner only.",
+        "operationId": "remove_member_api_v1_groups__group_id__members__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Remove Member",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/topics": {
+      "get": {
+        "description": "List topics in a topics-mode group.",
+        "operationId": "list_topics_api_v1_groups__group_id__topics_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Topics Api V1 Groups  Group Id  Topics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Topics",
+        "tags": [
+          "groups"
+        ]
+      },
+      "post": {
+        "description": "Create a topic \u2014 admin/owner only. Requires topics mode.",
+        "operationId": "create_topic_api_v1_groups__group_id__topics_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTopicRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create Topic Api V1 Groups  Group Id  Topics Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Topic",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/topics/{topic_id}": {
+      "delete": {
+        "description": "Delete a topic \u2014 admin/owner only.",
+        "operationId": "delete_topic_api_v1_groups__group_id__topics__topic_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "topic_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Topic Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Topic",
+        "tags": [
+          "groups"
         ]
       }
     },

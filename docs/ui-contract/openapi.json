@@ -23,6 +23,22 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "CompleteUploadRequest": {
+        "additionalProperties": false,
+        "description": "`POST /api/v1/media/upload/complete` request body.\n\nThe client reports that the S3 PUT finished. The server verifies via\n`head_object` and flips `upload_status` from `pending` \u2192 `completed`.",
+        "properties": {
+          "upload_id": {
+            "format": "uuid",
+            "title": "Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "upload_id"
+        ],
+        "title": "CompleteUploadRequest",
+        "type": "object"
+      },
       "CreateInstitutionRequest": {
         "description": "Request to create a new institution.",
         "properties": {
@@ -104,6 +120,37 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "InitUploadRequest": {
+        "additionalProperties": false,
+        "description": "`POST /api/v1/media/upload/init` request body.\n\nThe client declares the file it is about to upload; the server validates\nsize / MIME against the per-type limits in\n`reference-docs/modules/media/MODULE.md` \u00a7File Limits and mints a\npresigned PUT URL bound to those exact values.",
+        "properties": {
+          "file_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "File Name",
+            "type": "string"
+          },
+          "file_size": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 104857600.0,
+            "title": "File Size",
+            "type": "integer"
+          },
+          "mime_type": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Mime Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_name",
+          "file_size",
+          "mime_type"
+        ],
+        "title": "InitUploadRequest",
         "type": "object"
       },
       "InviteUserRequest": {
@@ -676,6 +723,271 @@
         "summary": "Create Institution",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/media/upload/complete": {
+      "post": {
+        "description": "Confirm an upload completed; verify via S3 HEAD; emit audit.",
+        "operationId": "complete_upload_api_v1_media_upload_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Complete Upload Api V1 Media Upload Complete Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Complete Upload",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/upload/init": {
+      "post": {
+        "description": "Initialise an upload and return a presigned PUT URL.",
+        "operationId": "init_upload_api_v1_media_upload_init_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Init Upload Api V1 Media Upload Init Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Init Upload",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{media_id}": {
+      "delete": {
+        "description": "Soft-delete: set `recycle_bin_at`. The object is purged after 30 days.",
+        "operationId": "delete_media_api_v1_media__media_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Media Api V1 Media  Media Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Media",
+        "tags": [
+          "media"
+        ]
+      },
+      "get": {
+        "description": "Return full metadata for a media file the caller can see.",
+        "operationId": "get_media_api_v1_media__media_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Media Api V1 Media  Media Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
+    "/api/v1/media/{media_id}/download": {
+      "get": {
+        "description": "Return a presigned GET URL for the media bytes.",
+        "operationId": "get_download_url_api_v1_media__media_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Media Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Download Url Api V1 Media  Media Id  Download Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Download Url",
+        "tags": [
+          "media"
         ]
       }
     },

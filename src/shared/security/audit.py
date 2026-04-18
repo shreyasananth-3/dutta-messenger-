@@ -69,6 +69,9 @@ class AuditEvent(StrEnum):
     MESSAGE_DELETED = "message.deleted"
     MESSAGE_EDITED = "message.edited"
     MEDIA_UPLOADED = "media.uploaded"
+    MEDIA_DELETED = "media.deleted"
+    MEDIA_RECYCLE_BIN_ENTERED = "media.recycle_bin_entered"
+    MEDIA_PERMANENTLY_DELETED = "media.permanently_deleted"
     NOTIFICATION_TOKEN_REGISTERED = "notification.token.registered"  # noqa: S105 - audit event name, not a token
 
 

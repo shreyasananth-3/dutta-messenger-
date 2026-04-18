@@ -31,8 +31,8 @@ For contracts: `docs/ui-contract/` (Flutter team's source of truth).
 | 4b — `acl` module | ⏳ | |
 | 4c — `groups` module | ⏳ | |
 | 4d — `chat` module (incl. WebSocket) | ⏳ | |
-| 4e — `media` module | ⏳ | |
-| 4f — `notifications` module | ⏳ | |
+| 4e — `media` module | ✅ done — extracted from PR #5 ([closed](https://github.com/shreyasananth-3/dutta-messenger-/pull/5)) | `5c83a1a` |
+| 4f — `notifications` module | ✅ done — extracted from PR #4 ([closed](https://github.com/shreyasananth-3/dutta-messenger-/pull/4)) | `f654775` |
 | 5 — UI contract (all modules) | ⏳ | |
 | 6 — Load + **E2E (tests/e2e/)** + seed | ⏳ | |
 
@@ -231,59 +231,84 @@ below).
 
 ## Fresh-session handoff — what to do next
 
-The session that closed this chapter ran the following to leave main in a
-known-good state:
+Stages 4e and 4f landed on `main` via clean extraction from the two
+open PRs — see the stage table above for commits.
 
-- Pushed 10 commits containing the Stage-0/1 primitives
-  (`celery_app.py`, `storage.py`, `middleware/idempotency.py`), the
-  Stage-3 RFCs, the users module (Stage 4a), and the original chore/doc
-  commits.
-- Fixed CI: added `DATABASE_URL` to the test job (so `alembic upgrade
-  head` works), marked `typecheck` as `continue-on-error` until the
-  SQLAlchemy strict-mypy carryover is resolved, added missing-stubs
-  overrides for `boto3`/`botocore`/`celery`/unbuilt module imports in
-  `pyproject.toml`.
-- Closed Gap B (`docs/MANUAL_SMOKE.md`): replaced all seven bare
-  `HTTPException` sites in `src/modules/auth/routes/auth_routes.py`
-  with `InternalServerError` / `AppException` subclasses. Error
-  envelopes now match `docs/design/api-versioning.md` across every
-  auth path.
-- Ran `ruff --fix` + `ruff format` across the repo. Zero ruff findings
-  remain on `src tests`. 349 tests pass.
+### What this session did (2026-04-18)
 
-### What the fresh session should do first
+- **Stage 4e — media — `5c83a1a`.** Extracted PR #5's five Worker B
+  commits (AuditEvent additions, migration 0005, module files, tests,
+  OpenAPI regen) via `git cherry-pick`, resolved one audit-enum merge
+  conflict, squashed into a single `feat(media)` commit. 55 new tests
+  pass; total suite 406.
+- **Stage 4f — notifications — `f654775`.** Could NOT cherry-pick —
+  Worker C's branch was cut from a pre-4a/4e baseline and the PR
+  diff deleted `users/`, `media/`, `src/shared/celery_app.py`,
+  `src/shared/storage.py`, `src/shared/middleware/idempotency.py`. Used
+  `git checkout pr-4 -- <new-only paths>` instead and applied the
+  five surgeries from `docs/extraction-shopping-list.md`:
+  1. cherry-pick new-only files only;
+  2. renamed migration `0004_notif_fanout_idx` →
+     `0006_notifications_schema` (revises `0005_media_module_schema`);
+  3. deleted `src/modules/notifications/celery_app.py`, repointed
+     `push_task.py` to `src.shared.celery_app`;
+  4. added explicit `User.institution_id` JOIN to `unread_count` — a
+     defence-in-depth filter since `notifications` is transitively
+     scoped per tenant-isolation.md §1.2;
+  5. added `write_audit(... NOTIFICATIONS_MARKED_READ)` to `mark_read`
+     inside the same transaction when rowcount > 0; extended
+     `AuditEvent` with 4 new values.
+- **Collateral fixes discovered during preflight:**
+  - `tests/shared/test_celery_app.py::test_no_tasks_registered_at_import`
+    was asserting the shared Celery app had zero user-level tasks;
+    that's now stale since notifications registers one. Rewrote as
+    `test_only_known_modules_register_tasks` with an allow-list.
+  - `ENABLE_NOTIFICATIONS` added to the force-on flag list in
+    `tests/conftest.py` alongside `ENABLE_USERS` and `ENABLE_MEDIA`.
+- **PRs closed with credit.** PR #5 and PR #4 closed via `gh pr close`
+  (NOT merged) with comments pointing to the landing commits. Worker
+  branches `track/media` + `track/notifications` left untouched as a
+  paper trail.
+- **Dependabot:** PR #1 (actions/checkout 4→6) merged clean on a green
+  CI after the main push. PR #2 + PR #3 were rebased via
+  `@dependabot rebase` comments; merge once CI goes green.
 
-1. `git pull origin main` — expect 3 new commits on top of the earlier
-   10: CI unblock, Gap B fix, and the lint sweep. **origin/main should
-   now be CI-green** (lint ✓, tests ✓, typecheck warn-only ✓,
-   security ✓). If it isn't, investigate before merging anything.
-2. Check in on the two open PRs:
-   - **PR #5 (`track/media`)** — was Worker B's attempt at Stage 4e.
-     Includes ~2 000 lines of lead-session duplicates + their actual
-     new work (`src/modules/media/*`, `migrations/0005_media_module_schema.py`,
-     `docs/design/threat-model-media.md`). Rather than ask Worker B to
-     rebase, extract just the new-only files onto `main` as a single
-     clean `feat(media): Stage 4e` commit. Wire the service to use
-     `src/shared/storage.py` and `src/shared/middleware/idempotency.py`
-     — no reinvention. Then close PR #5 with a comment crediting
-     Worker B and linking the landing commit.
-   - **PR #4 (`track/notifications`)** — was Worker C's attempt at
-     Stage 4f. Similar extraction, but with two additional surgeries:
-     (a) rename Worker C's migration from `0004_notif_fanout_idx.py`
-     to `0005_notifications_schema.py` with
-     `down_revision="0004_users_module_schema"`, (b) delete
-     `src/modules/notifications/celery_app.py` and import from
-     `src.shared.celery_app` instead, (c) wire the
-     `POST /api/v1/fcm-tokens` endpoint to
-     `require_idempotency("notifications.tokens")`. Then close PR #4
-     the same way.
-3. Dependabot PRs #1–#3 (GitHub-Actions version bumps) — these should
-   now have green CI runs triggered by the main push. Merge them one at
-   a time if CI is green. They're low-stakes.
-4. **Do NOT resume the worktree-parallel pattern.** Build 4b → 4c → 4d
-   serially here on `main`. `media` and `notifications` land as
-   extractions from the PRs, then Stage 5 (UI contract package) + Stage
-   6 (load/E2E) follow.
+### What the next session should do first
+
+1. `git pull origin main` — expect two new commits: the media landing
+   (`5c83a1a`) and the notifications landing (`f654775`).
+2. Verify `make test` green — 452 tests passing locally at commit
+   `f654775`. Coverage ≥ 80% for both media and notifications (media is
+   at 100% / 100% line+branch).
+3. **Dependabot PRs #2 + #3.** If still open and now green after
+   rebase, `gh pr merge <n> --squash --delete-branch`. If CI red on
+   rebase, investigate quickly (these are GitHub-Actions version bumps
+   — fix forward, don't let them rot).
+4. **Stage 4b (`acl`) is next on the serial path.** Read
+   `reference-docs/modules/acl/MODULE.md` and `SCHEMA.sql` before
+   coding; follow the pattern established by `src/modules/users/` and
+   `src/modules/media/`. The 8th users endpoint
+   (`PATCH /users/{id}/status`) was deferred to 4b because it requires
+   `institution.manage_users`.
+5. **Do NOT resume the worktree-parallel pattern.** Build 4b → 4c →
+   4d serially here on `main`, then Stage 5 (UI contract package) +
+   Stage 6 (load/E2E).
+
+### Known deviations from the extraction shopping list
+
+- Commit message for 4e matches the prescribed title exactly. Commit
+  message for 4f is the prescribed title; body expanded to document
+  the five surgeries applied (for the audit trail).
+- Two extra compliance tests added to
+  `tests/modules/notifications/test_notification_routes.py` (forged-JWT
+  unread probe + `mark_read` audit-row presence/absence) — not in the
+  shopping list explicitly but required by CLAUDE.md POST-FLIGHT §C
+  for the compliance fixes to be considered proven.
+- `tests/shared/test_celery_app.py` required an update the shopping
+  list did not predict — the existing assertion that "no user tasks
+  are registered at import" became false the moment notifications'
+  `push_task` module was imported by any pytest in the same session.
+  Rewritten as an allow-list assertion.
 
 ### Files the fresh session should read first
 

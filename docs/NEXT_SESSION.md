@@ -47,6 +47,7 @@ Small items that aren't a full stage but shouldn't be lost:
 
 | Item | Status | Where |
 |------|--------|-------|
+| **Manual live-server smoke — media (4e) + notifications (4f)** | ⏳ NOT yet run — see "Live-smoke gaps" table below for what's untested and the likely failure modes | [docs/MANUAL_SMOKE.md](MANUAL_SMOKE.md) — extend the recipe |
 | **Manual live-server smoke (auth slice)** | ✅ green — recipe + 3 gaps recorded | [docs/MANUAL_SMOKE.md](MANUAL_SMOKE.md) |
 | **Gap A — `audit_logs` not written on mutations** (surfaced by smoke) — infra exists, no routes call `audit.log(...)` | ⏳ fix during/after Stage 3 (taxonomy decided in tenant-isolation RFC) | [MANUAL_SMOKE.md § Gap A](MANUAL_SMOKE.md) |
 | **Gap B — inconsistent error envelope** (surfaced by smoke) — routes raising `HTTPException(detail=...)` bypass the standard `{error:{code,message,details}}` shape CLAUDE.md mandates | ⏳ quick cleanup (~4 call sites in auth routes) | [MANUAL_SMOKE.md § Gap B](MANUAL_SMOKE.md) |
@@ -54,6 +55,43 @@ Small items that aren't a full stage but shouldn't be lost:
 | **E2E tests (`tests/e2e/`)** — full-journey pytest: register → invite → accept → create group → send message → read → react → push | ⏳ deferred to Stage 6 | `tests/e2e/` is empty on purpose; E2E needs all modules to exist first |
 | **72 pre-existing ruff findings** surfaced by `make lint` (S105 hardcoded-password warnings on `config.py` defaults, I001 import-sort across auth + shared) — was invisible before `c80828a` wired `make lint` to the venv | ⏳ backlog | fix with `make format` pass + review, or add targeted `# noqa` for intentional dev defaults |
 | **Push local commits to origin** — chore + smoke + Stage-3 RFC commits are all unpushed | ⏳ after you review Stage 3 open questions | `git push origin main` |
+
+---
+
+## Live-smoke gaps — media (4e) + notifications (4f)
+
+Both modules landed with the full automated test suite green (452 pytest
+functions, 95.98% line coverage, real Postgres via asyncpg + real FastAPI
+app via ASGITransport). That catches contract correctness, service logic,
+tenant isolation, audit writes, and the 7-point checklist. It does NOT
+catch integration failures against real Redis / MinIO / Celery / FCM —
+the same category of bug that Gaps A/B/C in [MANUAL_SMOKE.md](MANUAL_SMOKE.md)
+surfaced for auth.
+
+**Rule of thumb (from auth-slice experience):** every module that touches
+an external system beyond Postgres ships with a live-smoke TODO until
+the recipe runs green. Record the expected gap here before it surprises us.
+
+| # | Untested path | Why tests don't catch it | Likely failure modes |
+|---|---------------|--------------------------|----------------------|
+| 1 | **MinIO / S3 presign → PUT → complete round-trip** (media) | `tests/modules/media/conftest.py` monkey-patches every `src.shared.storage` function with an in-process stub. The real `boto3` signing and bucket round-trip never fires. | Clock-skew signature mismatch on `PUT`; CORS denial from browser uploads; bucket-policy denies HEAD during `complete_upload`; 0-byte object slipping past virus-scan gate; multipart path never exercised. |
+| 2 | **Full Alembic chain on a fresh DB** (`0001 → 0006`) | CI runs `alembic upgrade head` but only on the ephemeral Postgres service container — never a downgrade round trip and never against a DB that already had `0004_users_module_schema` mid-history. Local dev DB has been incrementally upgraded, never clean-seeded. | `0005_media_module_schema` drops-and-recreates `media_files` — real prod rows would be destroyed (`tests_scripted` feature-flagged OFF masks this); `0006_notifications_schema` creates partial indexes concurrently, could race with a running app. |
+| 3 | **Celery worker picking up `notifications.send_push_batch`** | `push_task.send_push_batch` and `_run_batch` carry `# pragma: no cover — Celery entry point`. Tests drive `run_batch()` directly, bypassing the Celery bootstrap. | Task registration failure at worker boot (autodiscovery mis-wired); `asyncio.run()` inside the Celery sync wrapper colliding with worker's own loop policy; JSON serialisation of `uuid.UUID` args; `SessionLocal()` opening a new asyncpg connection per task blowing the pool under retries. |
+| 4 | **Real FCM send path** (`FCM_MOCK_MODE=false`) | Every test uses `MockFcmClient`; `src/modules/notifications/tasks/_firebase_client.py::FirebaseAdminClient` is untouched. | Missing `FCM_PROJECT_ID` / `FCM_PRIVATE_KEY` → 500 on first send; endpoint template `/projects/{project_id}/messages:send` never string-formatted with real ID; >500-recipient batch rejected by HTTP v1 API; `UNREGISTERED` response parsing mis-shaped; OAuth token exchange failing silently in the mock shadow. |
+| 5 | **Real Redis for the idempotency middleware** (media `POST /upload/init`) | `tests/modules/media/conftest.py` mocks Redis with an in-process dict. `src/shared/middleware/idempotency.py`'s fail-open-on-Redis-down branch fires in mock but was never proven against real Redis DOWN. | TTL not honoured (key sticks past 24h); `SETNX` race between two duplicate requests; fail-open counter `dutta_idempotency_redis_down_total` never incrementing in prod because real Redis is reachable but slow (timeout path untested); serialized response body exceeding 512KB Redis value limit on a large `media` response. |
+| 6 | **All four modules enabled simultaneously via `uvicorn`** | `tests/conftest.py` forces `ENABLE_USERS / ENABLE_MEDIA / ENABLE_NOTIFICATIONS` ON for the ASGI app — but never via a real `uvicorn src.main:app --reload` boot with the same env vars. | `src/main.py::create_app()` late-imports each module's `router.py`; a stale `.pyc` or an `ImportError` only surfaces at boot; Prometheus metric registration collision if two modules define the same counter label; OpenAPI path-operation-id collision between media and notifications. |
+| 7 | **Refresh-token rotation + FCM-token revocation interaction** | Auth Gap C (refresh tokens not rotated) is still open. A logout should also revoke the device's FCM tokens — the notifications module's `TokenService.revoke_token` exists, but no caller wires it into the logout flow. | User logs out on device A, device A keeps receiving push (security + privacy issue — DPDP §8(3) "right to erasure of consent"). Surfaces only under a multi-device live scenario. |
+| 8 | **Cross-institution fuzz on the live server** | Automated tests use pytest fixtures for two institutions; the JWT is always freshly minted in-process. A live server with two real `register` flows + JWT swap between them hasn't been exercised. | Middleware order bug where `institution_id` is read before JWT is verified; Postgres RLS policies (not yet enabled per tenant-isolation.md §1.3) masking bugs that app-layer filter misses. |
+
+**When to work through these:** before the first staging deploy of any
+module, run the corresponding row as a live smoke. Track fixes as Gaps
+D, E, F… in [MANUAL_SMOKE.md](MANUAL_SMOKE.md) with the same discipline
+as Gaps A/B/C on auth.
+
+**When NOT to block on these:** Stage 4b (`acl`) through 4d (`chat`) can
+proceed. None of them add new external-system dependencies beyond what
+auth already exercises. The live-smoke debt is for 4e + 4f specifically
+and for any future module that adds a third-party integration.
 
 ---
 

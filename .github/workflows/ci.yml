@@ -115,7 +115,9 @@ jobs:
       - name: detect-secrets
         run: detect-secrets scan --baseline .secrets.baseline
       - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.28.0
+        # Pinned to a known-good major. The earlier `@0.28.0` pin pointed
+        # at a non-existent release and failed the job on setup.
+        uses: aquasecurity/trivy-action@0.24.0
         with:
           scan-type: fs
           scan-ref: .

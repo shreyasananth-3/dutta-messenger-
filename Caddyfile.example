@@ -1,0 +1,14 @@
+# Caddyfile — auto-HTTPS from Let's Encrypt once the A record points at this box.
+#
+# On the EC2, copy this to ./Caddyfile and substitute {DOMAIN} with the real
+# domain (e.g. duttamsg.duckdns.org). Then restart caddy:
+#     docker compose -f docker-compose.prod.yml restart caddy
+
+{DOMAIN} {
+    encode gzip
+    reverse_proxy localhost:8000 {
+        # Pass real client IP through
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+    }
+}

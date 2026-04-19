@@ -76,6 +76,8 @@ class InvitationResponse(BaseModel):
     expires_at: datetime
     accepted_at: datetime | None
     created_at: datetime
+    token: str | None = None
+    invite_url: str | None = None
 
     class Config:
         """Pydantic configuration."""

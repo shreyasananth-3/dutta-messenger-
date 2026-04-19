@@ -93,13 +93,20 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
-# All modules default OFF. Flip individually while developing.
-ENABLE_USERS=false
-ENABLE_ACL=false
-ENABLE_GROUPS=false
-ENABLE_CHAT=false
-ENABLE_MEDIA=false
-ENABLE_NOTIFICATIONS=false
+# Feature flags — the config.py default for every one of these is False,
+# which means if you leave them out of .env you only get /auth/* registered
+# and every other endpoint returns 404. Keep them all true for day-to-day dev;
+# flip individually only when isolating a single module.
+ENABLE_USERS=true
+ENABLE_ACL=true
+ENABLE_GROUPS=true
+ENABLE_CHAT=true
+ENABLE_MEDIA=true
+ENABLE_NOTIFICATIONS=true
+
+# Invite link base — /auth/invite returns `{this}?token={token}` when DEBUG=true,
+# so the admin can hand the invitee a clickable link without wiring email.
+INVITE_LINK_BASE_URL=http://localhost:8000/register
 EOF
 ```
 

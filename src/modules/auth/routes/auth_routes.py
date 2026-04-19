@@ -254,9 +254,16 @@ async def invite_user(
         )
         await db.commit()
 
+        invitation_payload = InvitationResponse.from_orm(invitation)
+        if settings.DEBUG:
+            invitation_payload.token = invitation.token
+            invitation_payload.invite_url = (
+                f"{settings.INVITE_LINK_BASE_URL}?token={invitation.token}"
+            )
+
         return success_response(
             InviteUserResponse(
-                invitation=InvitationResponse.from_orm(invitation),
+                invitation=invitation_payload,
                 message=f"Invitation sent to {data.email}",
             )
         )

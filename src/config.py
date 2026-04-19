@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     # API
     API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
+    INVITE_LINK_BASE_URL: str = "http://localhost:8000/register"
 
     # Pagination
     DEFAULT_PAGE_LIMIT: int = 50

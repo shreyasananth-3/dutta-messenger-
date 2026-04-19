@@ -1,6 +1,6 @@
 # WebSocket Protocol — Chat Module
 
-> **This document defines every WebSocket event for real-time chat.** The Flutter team and backend team must both follow this spec exactly. All events work identically for DMs, simple groups, and topic conversations.
+> **This document is the TARGET spec.** The minimal implementation that's actually live today (auth-in-first-frame, no heartbeat, flat frame shape) is documented in [`docs/ui-contract/websocket-integration.md`](../../../../docs/ui-contract/websocket-integration.md). Flutter integrations should follow that doc, not this one, until the items listed under MODULE.md § Deferred ship.
 
 ---
 
@@ -8,15 +8,18 @@
 
 ### Endpoint
 ```
-wss://{host}/ws/chat?token={jwt_access_token}
+wss://{host}/api/v1/ws/chat
 ```
 
-### Handshake
-1. Client connects with JWT as query parameter.
-2. Server verifies JWT. If invalid → close with code `4001` and reason `"Invalid token"`.
-3. Server registers the connection in the connection manager (in-memory + Redis).
-4. Server sends `connection.established` event.
-5. Client begins sending/receiving events.
+The path is `/api/v1/ws/chat`. Prior revisions of this doc listed `/ws/chat` — that was wrong and will give you a 404.
+
+### Handshake (target spec)
+1. Client connects (no query params).
+2. Client sends `{"type":"auth","token":"<jwt>"}` as the first frame.
+3. Server verifies JWT. If invalid → close with code `4001` and reason `"Invalid token"`.
+4. Server registers the connection in the connection manager (in-memory + Redis).
+5. Server sends `connection.established` event.
+6. Client begins sending/receiving events.
 
 ### Heartbeat
 - Server sends `ping` frame every 30 seconds.

@@ -25,10 +25,12 @@ The Flutter chat screen currently has a "Refresh" button that calls `GET /api/v1
 
 ### Endpoint
 ```
-wss://<backend-host>/ws/chat
+wss://<backend-host>/api/v1/ws/chat
 ```
 
 The URL has **no query parameters**. The JWT token is sent in the first frame, not the URL.
+
+**Important:** the path is `/api/v1/ws/chat`, not `/ws/chat`. Getting this wrong yields a `404` or `403` from the server (no route). Verified: round-trip over `/api/v1/ws/chat` through ngrok is ~70 ms.
 
 ### Frame sequence
 
@@ -228,7 +230,7 @@ class ChatService {
     final wsUrl = apiBase
             .replaceFirst('https://', 'wss://')
             .replaceFirst('http://', 'ws://') +
-        '/ws/chat';
+        '/api/v1/ws/chat';
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
@@ -398,7 +400,7 @@ If messages don't appear on the Flutter screen: the WebSocket isn't connected. C
 
 Run this on the backend machine while Flutter is open:
 ```bash
-grep "ws/chat" <path-to-server-log>
+grep "/api/v1/ws/chat" <path-to-server-log>
 ```
 You should see a WebSocket connection logged when the Flutter app logs in. If this returns **zero hits**, Flutter is not using WebSocket at all and the integration has failed silently. Go back to §4.
 
@@ -432,7 +434,7 @@ All four must pass. No partial credit.
 
 - [ ] **Gate 1 — no UI timer.** `grep -R "Timer.periodic" lib/` finds zero matches in any chat-related file.
 - [ ] **Gate 2 — no refresh button.** Every `IconButton` / `ElevatedButton` with `Icons.refresh` in chat screens is deleted.
-- [ ] **Gate 3 — WS connection visible in server log.** `grep "ws/chat" <server.log>` shows a 101 Switching Protocols entry within 2 s of the user logging in.
+- [ ] **Gate 3 — WS connection visible in server log.** `grep "/api/v1/ws/chat" <server.log>` shows a 101 Switching Protocols entry within 2 s of the user logging in.
 - [ ] **Gate 4 — sub-second delivery.** Two-emulator smoke (§6.2): messages arrive in under 1 second with no user action on the receiving side.
 
 If any gate fails, the task is not done. Report what's failing and why before asking for review.
@@ -466,7 +468,7 @@ feat(chat): replace manual refresh with persistent WebSocket
 - Auto-reconnect on disconnect
 
 Verified:
-- ws/chat shows 101 in backend log on login
+- /api/v1/ws/chat shows 101 in backend log on login
 - Two-emulator: <500ms delivery, no taps
 - fake_peer.py script drives screen updates without refresh
 ```

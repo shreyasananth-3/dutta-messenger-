@@ -7,6 +7,8 @@ A private institutional messaging platform with Flutter frontend. Built with Fas
 > **🛠️ Setting up locally?** Follow [`docs/LOCAL_SETUP.md`](docs/LOCAL_SETUP.md) — battle-tested recipe with every gotcha we actually hit (Python version, multi-statement migration issue, greenlet, pydantic strict mode). ~10 minutes on a clean Mac.
 >
 > **🧪 Testing locally — load, multi-user, audit review?** [`docs/LOCAL_TESTING.md`](docs/LOCAL_TESTING.md) covers multiple users, k6 scripts, chat-reaction latency, and the 4-step audit-review recipe after every test run. Audit lives in the `audit_logs` Postgres table; logs go to `stdout` (pipe to `tee` to keep a file).
+>
+> **💨 Smoke testing — what to run after every deploy?** [`docs/SMOKE_TESTING.md`](docs/SMOKE_TESTING.md) covers our smoke scripts, the four anti-patterns we've been bitten by (including "happy path split across phases"), a checklist for writing new smokes, and the regression log. Run `scripts/smoke_live.py` after every push to `main`.
 
 ## Quick Start
 

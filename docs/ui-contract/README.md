@@ -25,6 +25,10 @@
 
 ---
 
+**👉 On AWS right now:** `https://dattamessenger.duckdns.org` is the stable backend. If your Flutter app is still hitting `ngrok-free.dev` anywhere, read [environments.md](environments.md) — that's the one-setting fix.
+
+---
+
 ## 2. Running the backend locally (for UI testing)
 
 ```bash

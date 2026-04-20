@@ -89,7 +89,8 @@ def _build_client() -> Any:
     # Default: AWS S3 (or any S3 API with default endpoint)
     return boto3.client(
         "s3",
-        config=_BotoConfig(signature_version="s3v4"),
+        region_name=settings.AWS_REGION,
+        config=_BotoConfig(signature_version="s3v4", s3={"addressing_style": "virtual"}),
     )
 
 

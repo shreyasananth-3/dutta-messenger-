@@ -16,9 +16,9 @@
 | ✅ **Health probe** | **Ready** | `GET /health` — useful for smoke tests |
 | ✅ Users (profiles, search, presence, settings) | **Ready** | `ENABLE_USERS=true`; 7 endpoints |
 | ✅ ACL (roles, permissions, 3-level access) | **Ready** | `ENABLE_ACL=true`; 4 endpoints |
-| ✅ Groups (incl. topics) | **Ready** | `ENABLE_GROUPS=true`; 11 endpoints |
-| ✅ Chat (REST + WebSocket) | **Ready** | `ENABLE_CHAT=true`; 6 REST + `/api/v1/ws/chat` |
-| ✅ Media upload | **Ready** | `ENABLE_MEDIA=true`; 4 endpoints + recycle bin |
+| ✅ Groups (incl. topics) | **Ready** | Endpoints listed in [groups.md](groups.md) — 11 endpoints |
+| ✅ Chat (REST + WebSocket) | **Ready** | WebSocket integration in [websocket-integration.md](websocket-integration.md); 6 REST + `/api/v1/ws/chat` |
+| ✅ Media upload | **Ready** | Endpoints listed in [media.md](media.md) — 5 endpoints (presigned-URL flow, not multipart) |
 | ✅ Push notifications | **Ready** | `ENABLE_NOTIFICATIONS=true`; 4 endpoints + FCM fanout |
 
 **Feature flags are environment variables** read at server startup. A module whose flag is `false` returns `404` for all its routes — you can safely write Flutter code against the planned contracts in `reference-docs/modules/*/MODULE.md` and flip flags on as each module ships.

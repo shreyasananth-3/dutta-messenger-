@@ -25,6 +25,7 @@ from src.modules.chat.models.response_models import (
     MarkReadResponse,
     MessageResponse,
 )
+from src.modules.chat.routes.ws_routes import _broadcast
 from src.modules.chat.services.message_service import MessageService
 from src.shared.database import get_db
 from src.shared.middleware.auth import get_current_user
@@ -98,7 +99,9 @@ async def send_message(
         content=data.content,
         reply_to_message_id=data.reply_to_message_id,
     )
-    return success_response(MessageResponse.model_validate(msg))
+    payload = MessageResponse.model_validate(msg)
+    await _broadcast(str(conversation_id), {"type": "message.new", "message": payload.model_dump(mode="json")})
+    return success_response(payload)
 
 
 @router.patch(

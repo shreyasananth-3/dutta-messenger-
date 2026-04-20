@@ -93,12 +93,12 @@ async def run(base: str) -> int:
     rest_lat: list[float] = []
     for i in range(5):
         t0 = time.time()
-        code, r = call(base, "POST", f"/api/v1/chat/conversations/{cid}/messages", tokens["Alice"][0], {"content": f"REST #{i+1} @ {stamp}"})
+        code, r = call(base, "POST", f"/api/v1/chat/conversations/{cid}/messages", tokens["Alice"][0], {"content": f"REST-pre #{i+1} @ {stamp}"})
         rest_lat.append((time.time() - t0) * 1000)
         if code >= 300:
             print(f"  ! REST send failed: {code} {r}")
             return 1
-    print(f"  + 5 REST messages  p50={statistics.median(rest_lat):.0f}ms  max={max(rest_lat):.0f}ms")
+    print(f"  + 5 REST messages (pre-WS-open) p50={statistics.median(rest_lat):.0f}ms  max={max(rest_lat):.0f}ms")
 
     async def ws_open(tok: str) -> websockets.WebSocketClientProtocol:
         w = await websockets.connect(ws_url, open_timeout=10)
@@ -129,7 +129,7 @@ async def run(base: str) -> int:
                 frame = json.loads(raw)
                 if frame.get("type") == "message.new":
                     target.append(frame["message"]["content"])
-        except asyncio.TimeoutError:
+        except (asyncio.TimeoutError, asyncio.CancelledError):
             pass
 
     t_b = asyncio.create_task(collect(wb, recv_b))
@@ -142,24 +142,43 @@ async def run(base: str) -> int:
         await asyncio.wait_for(wa.recv(), timeout=3.0)
         ws_lat.append((time.time() - t0) * 1000)
 
-    await asyncio.sleep(1.5)
+    # REST-triggers-WS-broadcast: Alice posts via REST, Bob + Carol must
+    # receive a message.new frame (this was missed in earlier versions of
+    # this smoke — REST send and WS listen were split across phases, so
+    # REST-only fanout regressions were invisible).
+    rest_ws_probes = [f"REST-post #{i+1} @ {stamp}" for i in range(3)]
+    for content in rest_ws_probes:
+        code, _ = call(base, "POST", f"/api/v1/chat/conversations/{cid}/messages", tokens["Alice"][0], {"content": content})
+        if code >= 300:
+            print(f"  ! REST-post send failed: {code}")
+            return 1
+
+    # Wait long enough for REST-triggered broadcasts to arrive too
+    await asyncio.sleep(2.5)
     t_b.cancel()
     t_c.cancel()
     for t in (t_b, t_c):
         try:
             await t
-        except Exception:
+        except (Exception, asyncio.CancelledError):
             pass
     for w in (wa, wb, wc):
         await w.close()
 
-    print(f"  + 5 WS messages    p50={statistics.median(ws_lat):.0f}ms  max={max(ws_lat):.0f}ms")
-    print(f"  {'+' if len(recv_b)==5 else '!'} Bob received {len(recv_b)}/5 WS messages")
-    print(f"  {'+' if len(recv_c)==5 else '!'} Carol received {len(recv_c)}/5 WS messages")
+    # Each user is subscribed, so expect 5 WS-native + 3 REST-post broadcasts = 8.
+    expected_ws_deliveries = 5 + len(rest_ws_probes)
+    print(f"  + {len(ws_lat)} WS messages  p50={statistics.median(ws_lat):.0f}ms  max={max(ws_lat):.0f}ms")
+    print(f"  {'+' if len(recv_b)==expected_ws_deliveries else '!'} Bob  received {len(recv_b)}/{expected_ws_deliveries} WS deliveries (WS-native + REST-triggered)")
+    print(f"  {'+' if len(recv_c)==expected_ws_deliveries else '!'} Carol received {len(recv_c)}/{expected_ws_deliveries} WS deliveries (WS-native + REST-triggered)")
+
+    # Explicit check for the REST-to-WS broadcast path (missed in prior smoke versions)
+    bob_rest_triggered = [c for c in recv_b if c.startswith("REST-post ")]
+    print(f"  {'+' if len(bob_rest_triggered)==len(rest_ws_probes) else '!'} Bob received {len(bob_rest_triggered)}/{len(rest_ws_probes)} REST-triggered WS frames (guards against fanout regression)")
 
     code, r = call(base, "GET", f"/api/v1/chat/conversations/{cid}/messages?limit=50", tokens["Bob"][0])
     msgs = r.get("data", [])
-    print(f"  {'+' if len(msgs)==10 else '!'} Bob GET history: {len(msgs)}/10 messages")
+    expected_history = 5 + 5 + len(rest_ws_probes)  # REST-pre + WS + REST-post
+    print(f"  {'+' if len(msgs)==expected_history else '!'} Bob GET history: {len(msgs)}/{expected_history} messages")
 
     code, _ = call(base, "GET", f"/api/v1/chat/conversations/{cid}/messages")
     print(f"  {'+' if code==401 else '!'} no-auth GET blocked ({code})")
@@ -167,7 +186,13 @@ async def run(base: str) -> int:
     code, _ = call(base, "GET", f"/api/v1/chat/conversations/{cid}/messages", admin_tok)
     print(f"  {'+' if code in (403,404) else '!'} non-member blocked ({code})")
 
-    passed = len(recv_b) == 5 and len(recv_c) == 5 and len(msgs) == 10 and code in (403, 404)
+    passed = (
+        len(recv_b) == expected_ws_deliveries
+        and len(recv_c) == expected_ws_deliveries
+        and len(bob_rest_triggered) == len(rest_ws_probes)
+        and len(msgs) == expected_history
+        and code in (403, 404)
+    )
     if passed:
         print(f"\n++ SMOKE PASSED  REST p50={statistics.median(rest_lat):.0f}ms  WS p50={statistics.median(ws_lat):.0f}ms")
         return 0

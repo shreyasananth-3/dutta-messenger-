@@ -44,10 +44,10 @@ logger = structlog.get_logger()
 # File-type allow-lists and size caps (MODULE.md §File Limits)
 # ---------------------------------------------------------------------------
 
-_IMAGE_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
-_VIDEO_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
-_AUDIO_MAX_BYTES = 20 * 1024 * 1024  # 20 MB
-_DOCUMENT_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
+_IMAGE_MAX_BYTES = 1024 * 1024 * 1024  # 1 GB
+_VIDEO_MAX_BYTES = 1024 * 1024 * 1024  # 1 GB
+_AUDIO_MAX_BYTES = 1024 * 1024 * 1024  # 1 GB
+_DOCUMENT_MAX_BYTES = 1024 * 1024 * 1024  # 1 GB
 
 _ALLOWED_IMAGE_MIME: frozenset[str] = frozenset(
     {
@@ -301,6 +301,70 @@ class MediaService:
         return media
 
     @staticmethod
+    async def list_for_uploader(
+        db: AsyncSession,
+        *,
+        institution_id: uuid.UUID | str,
+        uploader_id: uuid.UUID | str,
+        limit: int = 50,
+        before_id: uuid.UUID | str | None = None,
+    ) -> list[MediaFile]:
+        """List the caller's own completed uploads, newest-first.
+
+        Privacy boundary: scoped to (institution_id, uploader_id) — a
+        user cannot see another user's vault. Excludes tombstoned and
+        recycle-binned rows. Cursor-paginated via `before_id`.
+        """
+        stmt = (
+            tenant_scoped_query(MediaFile, institution_id)
+            .where(MediaFile.uploader_id == str(uploader_id))
+            .where(MediaFile.upload_status == "completed")
+            .where(MediaFile.deleted_at.is_(None))
+            .where(MediaFile.recycle_bin_at.is_(None))
+            .order_by(MediaFile.created_at.desc())
+            .limit(limit)
+        )
+        if before_id is not None:
+            anchor = await db.scalar(
+                tenant_scoped_query(MediaFile, institution_id).where(
+                    MediaFile.id == str(before_id)
+                )
+            )
+            if anchor is not None:
+                stmt = stmt.where(MediaFile.created_at < anchor.created_at)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def assert_uploader_owns(
+        db: AsyncSession,
+        *,
+        institution_id: uuid.UUID | str,
+        uploader_id: uuid.UUID | str,
+        media_ids: list[uuid.UUID],
+    ) -> None:
+        """Guard: every media_id must be owned by `uploader_id`.
+
+        Used by the chat send-message path so a user cannot share
+        another user's vault item by guessing its UUID. Raises
+        PermissionDeniedError on the first id that fails the check.
+        """
+        if not media_ids:
+            return
+        for mid in media_ids:
+            stmt = (
+                tenant_scoped_query(MediaFile, institution_id)
+                .where(MediaFile.id == str(mid))
+                .where(MediaFile.uploader_id == str(uploader_id))
+                .where(MediaFile.deleted_at.is_(None))
+            )
+            row = await db.scalar(stmt)
+            if row is None:
+                raise PermissionDeniedError(
+                    f"media {mid} is not owned by the sender"
+                )
+
+    @staticmethod
     async def get_download_url(
         db: AsyncSession,
         *,
@@ -323,7 +387,20 @@ class MediaService:
             )
         # Recycle-bin files are still downloadable during the grace window —
         # the uploader may want to restore or export before permanent purge.
-        content_disposition = f'attachment; filename="{_safe_filename(media.file_name)}"'
+        #
+        # Content-Disposition: render media (images / video / audio) inline
+        # so the chat client can preview them without bouncing the user out
+        # to the S3 redirect. Documents (PDF, archives, office files, etc.)
+        # keep `attachment` so the client / OS download flow is unaffected
+        # — Shreyas explicitly wants PDFs to open in the system viewer.
+        mime = (media.mime_type or "").lower()
+        if mime.startswith(("image/", "video/", "audio/")):
+            disposition_kind = "inline"
+        else:
+            disposition_kind = "attachment"
+        content_disposition = (
+            f'{disposition_kind}; filename="{_safe_filename(media.file_name)}"'
+        )
         url = await storage.presigned_get_url(
             media.storage_key,
             expires_in=_PRESIGNED_GET_EXPIRES_IN,

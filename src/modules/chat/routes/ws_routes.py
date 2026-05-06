@@ -25,6 +25,7 @@ from sqlalchemy import select
 from src.config import settings
 from src.modules.chat.models.db_models import ConversationMember
 from src.modules.chat.services.message_service import MessageService
+from src.shared import realtime
 from src.shared.database import SessionLocal
 
 
@@ -94,6 +95,10 @@ async def chat_ws(ws: WebSocket) -> None:  # pragma: no cover - exercised via ma
             return
         user_id = str(claims.get("sub"))
         institution_id = str(claims.get("inst") or "")
+        # Add to the cross-module registry so ACL / users / etc. can push
+        # frames (e.g. user.role_changed) to every device this user has
+        # open without coupling to the per-conversation registry above.
+        realtime.register(user_id, ws)
         await ws.send_json(
             {
                 "type": "connection.established",
@@ -183,3 +188,5 @@ async def chat_ws(ws: WebSocket) -> None:  # pragma: no cover - exercised via ma
                 _connections[cid].remove(ws)
             except ValueError:
                 pass
+        if user_id is not None:
+            realtime.unregister(user_id, ws)

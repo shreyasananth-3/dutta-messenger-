@@ -16,7 +16,7 @@ import uuid
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.acl.models.request_models import AssignRoleRequest
@@ -27,6 +27,7 @@ from src.modules.acl.models.response_models import (
     UserPermissionsResponse,
 )
 from src.modules.acl.services.acl_service import ACLService
+from src.shared import realtime
 from src.shared.database import get_db
 from src.shared.exceptions import PermissionDeniedError
 from src.shared.middleware.auth import get_current_user
@@ -71,6 +72,7 @@ async def list_roles(
 async def assign_role(
     user_id: uuid.UUID,
     data: AssignRoleRequest,
+    background_tasks: BackgroundTasks,
     current_user: dict[str, Any] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
@@ -83,6 +85,17 @@ async def assign_role(
         role_id=data.role_id,
         assigned_by=current_user["user_id"],
     )
+    # Push the change to every device the target user has open so their
+    # client can re-fetch /users/me and reflect the new permissions
+    # without requiring a sign-out (audit 4.7 cross-device gap). Skip
+    # the broadcast when the assignment was already in place — nothing
+    # to tell the client.
+    if not reused:
+        background_tasks.add_task(
+            realtime.broadcast_to_user,
+            str(user_id),
+            {"type": "user.role_changed"},
+        )
     return success_response(
         AssignRoleResponse(
             user_id=uuid.UUID(str(row.user_id)),
@@ -102,6 +115,7 @@ async def assign_role(
 async def revoke_role(
     user_id: uuid.UUID,
     role_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     current_user: dict[str, Any] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -113,6 +127,13 @@ async def revoke_role(
         user_id=user_id,
         role_id=role_id,
         revoked_by=current_user["user_id"],
+    )
+    # Same cross-device push as assign — the target user's other
+    # sessions need to drop any cached permission that this role granted.
+    background_tasks.add_task(
+        realtime.broadcast_to_user,
+        str(user_id),
+        {"type": "user.role_changed"},
     )
 
 

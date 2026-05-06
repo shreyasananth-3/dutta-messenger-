@@ -25,7 +25,7 @@ class InitUploadRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     file_name: Annotated[str, Field(min_length=1, max_length=255)]
-    file_size: Annotated[int, Field(gt=0, le=104_857_600)]  # 100 MB ceiling
+    file_size: Annotated[int, Field(gt=0, le=1_073_741_824)]  # 1 GB ceiling
     mime_type: Annotated[str, Field(min_length=1, max_length=100)]
 
 

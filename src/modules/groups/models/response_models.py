@@ -9,7 +9,12 @@ from pydantic import BaseModel, ConfigDict
 
 
 class GroupResponse(BaseModel):
-    """Single group record."""
+    """Single group record.
+
+    `member_count` is computed per-request rather than stored on the row
+    (rows would drift after every add/remove). The list endpoint uses
+    `count_members_bulk` to avoid N+1.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -23,6 +28,7 @@ class GroupResponse(BaseModel):
     is_archived: bool | None
     created_at: datetime
     updated_at: datetime
+    member_count: int = 0
 
 
 class GroupMemberResponse(BaseModel):
@@ -58,3 +64,13 @@ class AddMemberResponse(BaseModel):
     user_id: uuid.UUID
     role: str
     reused: bool
+
+
+class TopicDeleteResponse(BaseModel):
+    """Result of deleting a topic — returns the updated group + the
+    remaining topic list so the client can hard-replace local state
+    without a follow-up GET (audit 3.1, option a)."""
+
+    deleted: bool
+    group: GroupResponse
+    topics: list[TopicResponse]

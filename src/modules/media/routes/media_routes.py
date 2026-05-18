@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -84,6 +84,34 @@ async def complete_upload(
     )
     await db.commit()
     return success_response(_media_to_response(media))
+
+
+# ---------------------------------------------------------------------------
+# GET /media/ — list the caller's own vault (privacy-scoped)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/media/")
+async def list_media(
+    current_user: Annotated[dict[str, Any], Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(50, ge=1, le=100),
+    before_id: uuid.UUID | None = Query(default=None),
+) -> dict[str, Any]:
+    """List the caller's own completed vault uploads, newest-first.
+
+    Privacy boundary lives in [list_for_uploader] — the SQL is scoped
+    to (institution_id, uploader_id) so a user can never see another
+    user's vault even by guessing UUIDs.
+    """
+    rows = await MediaService.list_for_uploader(
+        db,
+        institution_id=current_user["institution_id"],
+        uploader_id=current_user["user_id"],
+        limit=limit,
+        before_id=before_id,
+    )
+    return success_response([_media_to_response(m) for m in rows])
 
 
 # ---------------------------------------------------------------------------

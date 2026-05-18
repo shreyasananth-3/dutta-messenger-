@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 
 import structlog
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.groups.models.db_models import Group, GroupMember, Topic
@@ -100,6 +100,40 @@ class GroupService:
         if group is None:
             raise NotFoundError("group", str(group_id))
         return group
+
+    @staticmethod
+    async def count_members(
+        db: AsyncSession,
+        *,
+        group_id: uuid.UUID | str,
+    ) -> int:
+        """Single-group member count. Used by detail endpoints."""
+        n = await db.scalar(
+            select(func.count())
+            .select_from(GroupMember)
+            .where(GroupMember.group_id == str(group_id))
+        )
+        return int(n or 0)
+
+    @staticmethod
+    async def count_members_bulk(
+        db: AsyncSession,
+        *,
+        group_ids: list[str],
+    ) -> dict[str, int]:
+        """Bulk member counts for a list endpoint — one query, not N.
+
+        Returns a {group_id -> count} dict. Group ids with no members
+        won't appear in the dict; callers should default to 0.
+        """
+        if not group_ids:
+            return {}
+        rows = await db.execute(
+            select(GroupMember.group_id, func.count())
+            .where(GroupMember.group_id.in_(group_ids))
+            .group_by(GroupMember.group_id)
+        )
+        return {str(gid): int(count) for gid, count in rows.all()}
 
     @staticmethod
     async def list_user_groups(

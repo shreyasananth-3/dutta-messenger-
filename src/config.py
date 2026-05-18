@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/2"
 
     # File Upload
-    MAX_FILE_SIZE: int = 104857600  # 100MB
+    MAX_FILE_SIZE: int = 1073741824  # 1GB
     ALLOWED_FILE_TYPES: str = "jpg,jpeg,png,gif,pdf,doc,docx,txt,mp3,mp4"
 
     # API

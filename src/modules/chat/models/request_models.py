@@ -8,10 +8,18 @@ from pydantic import BaseModel, Field
 
 
 class SendMessageRequest(BaseModel):
-    """Body for `POST /api/v1/chat/conversations/{id}/messages`."""
+    """Body for `POST /api/v1/chat/conversations/{id}/messages`.
+
+    `media_ids` is set when the sender is re-sharing existing vault
+    items (Media Vault picker flow) so the server can verify ownership
+    before accepting the message — without it, anyone could embed
+    another user's media UUID in `content` and exfiltrate by listening
+    on a shared conversation.
+    """
 
     content: str = Field(..., min_length=1, max_length=4096)
     reply_to_message_id: uuid.UUID | None = None
+    media_ids: list[uuid.UUID] | None = None
 
 
 class EditMessageRequest(BaseModel):
